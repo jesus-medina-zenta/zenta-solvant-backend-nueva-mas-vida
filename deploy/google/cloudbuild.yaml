@@ -1,0 +1,61 @@
+steps:
+  - id : 'Unshallow clone'
+    name: gcr.io/cloud-builders/git
+    args: ['fetch', '--unshallow']
+
+  - id: 'Sonar'
+    name: 'sonarsource/sonar-scanner-cli:5.0'
+    entrypoint: 'sonar-scanner'
+    args:
+      - '-Dsonar.host.url=${_SONAR_URL}'
+      - '-Dsonar.login=${_SONAR_TOKEN}'
+      - '-Dsonar.projectKey=${_COMPONENT_NAME}'
+
+  - id: 'Build docker image'
+    name: 'gcr.io/cloud-builders/docker'
+    args:
+      [
+        'build',
+        '-t',
+        '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_DOCKER_REPOSITORY}/${_COMPONENT_NAME}:$BUILD_ID',
+        '.',
+      ]
+
+  - id: 'Push docker image'
+    name: 'gcr.io/cloud-builders/docker'
+    args:
+      [
+        'push',
+        '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_DOCKER_REPOSITORY}/${_COMPONENT_NAME}:$BUILD_ID',
+      ]
+
+  - id: 'Deploy to Cloud Run'
+    name: 'gcr.io/cloud-builders/gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - '${_COMPONENT_NAME}-${_ENV}'
+      - '--image'
+      - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_DOCKER_REPOSITORY}/${_COMPONENT_NAME}:$BUILD_ID'
+      - '--region'
+      - '${_REGION}'
+      - '--service-account'
+      - '${_RUN_SERVICE_ACCOUNT_EMAIL}'
+      - '--set-env-vars=ENV=${_ENV}'
+      - '--set-env-vars=PROJECT_ID=$PROJECT_ID'
+      - '--set-env-vars=LIST_CORS=${_LIST_CORS}'
+      - '--set-env-vars=TOKEN_EXPIRATION=${_TOKEN_EXPIRATION}'
+      - '--set-env-vars=SECRETKEY_AUTH=${_SECRETKEY_AUTH}'
+      - '--set-env-vars=EXTERNAL_API_SECURITY_TYPE=${_EXTERNAL_API_SECURITY_TYPE}'
+      - '--set-env-vars=EXTERNAL_API_TOKEN=${_EXTERNAL_API_TOKEN}'
+      - '--set-env-vars=EXTERNAL_API_BASE_URL=${_EXTERNAL_API_BASE_URL}'
+      - '--set-env-vars=GOOGLE_CLIENT_ID=${_GOOGLE_CLIENT_ID}'
+      - '--set-env-vars=GCP_FIRESTORE_DATABASE_ID=${_GCP_FIRESTORE_DATABASE_ID}'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--port'
+      - '3000'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
