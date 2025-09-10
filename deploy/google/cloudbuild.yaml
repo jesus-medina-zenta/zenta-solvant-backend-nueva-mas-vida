@@ -41,7 +41,7 @@ steps:
       - '--set-env-vars=GCP_FIRESTORE_DATABASE_ID=${_GCP_FIRESTORE_DATABASE_ID}'
       - '--platform'
       - 'managed'
-      - '--allow-unauthenticated'
+      - '--no-allow-unauthenticated'
       - '--port'
       - '3000'
 
