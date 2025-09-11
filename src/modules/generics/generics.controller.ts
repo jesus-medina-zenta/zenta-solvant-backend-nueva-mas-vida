@@ -24,7 +24,6 @@ import { UpdateGenericDto } from './dtos/update-generic.dto';
 
 @ApiTags('Generics')
 @Controller('generics')
-@UseInterceptors(CsrfInterceptor)
 export class GenericsController {
   constructor(private readonly service: GenericsService) {}
 
