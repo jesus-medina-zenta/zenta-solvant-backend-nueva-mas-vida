@@ -4,9 +4,19 @@ import { SharedModule } from './shared/shared.module';
 import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { GenericsModule } from './modules/generics/generics.module';
+import { AgentsModule } from './modules/agents/agents.module';
+import { ConversationsModule } from './modules/conversations/conversations.module';
 
 @Module({
-  imports: [CoreModule, SharedModule, AuthModule, UsersModule, GenericsModule],
+  imports: [
+    CoreModule,
+    SharedModule,
+    AuthModule,
+    UsersModule,
+    GenericsModule,
+    AgentsModule,
+    ConversationsModule,
+  ],
   controllers: [],
   providers: [],
 })

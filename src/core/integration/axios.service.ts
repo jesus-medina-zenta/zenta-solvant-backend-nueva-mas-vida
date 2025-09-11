@@ -34,7 +34,7 @@ export class AxiosService<T> implements IIntegrationService<T> {
         if (!this.securityConfig.apiKey) {
           throw new Error('API Key no proporcionada.');
         }
-        headers['x-api-key'] = this.securityConfig.apiKey;
+        headers['xi-api-key'] = this.securityConfig.apiKey;
         break;
 
       case SecurityType.BEARER_TOKEN:
