@@ -6,7 +6,6 @@ import {
   Param,
   Put,
   Delete,
-  UseInterceptors,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -16,7 +15,6 @@ import {
   ApiBody,
 } from '@nestjs/swagger';
 
-import { CsrfInterceptor } from 'src/shared/interceptors/csrf.interceptor';
 import { GenericsService } from './generics.service';
 import { CreateGenericDto } from './dtos/create-generic.dto';
 import { Generic } from 'src/shared/entities/generic.entity';
