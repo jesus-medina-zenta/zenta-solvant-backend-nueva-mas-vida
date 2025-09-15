@@ -37,6 +37,13 @@ export class AgentsService {
         : null,
     }));
 
+    this.logger.log(
+      `Listing agents - cursor: ${cursor}, pageSize: ${pageSize}, search: ${search}`,
+    );
+    this.logger.log(
+      `Retrieved ${agents.length} agents, hasMore: ${response.has_more}`,
+    );
+
     return {
       agents,
       hasMore: response.has_more,

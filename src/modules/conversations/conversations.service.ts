@@ -4,7 +4,6 @@ import { GetConversationsQueryDto } from './dto/get-conversations-query.dto';
 import { ListConversationsResponseDto } from './dto/list-conversations-response.dto';
 import { ListConversationsDto } from './dto/list-conversation.dto';
 import { ConversationByIdResponseDto } from './dto/conversation-by-id-response.dto';
-// ...existing code...
 
 @Injectable()
 export class ConversationsService {
@@ -42,6 +41,13 @@ export class ConversationsService {
       },
     );
 
+    this.logger.log(
+      `Fetching conversations with params: ${JSON.stringify(query)}`,
+    );
+    this.logger.log(
+      `Retrieved ${conversations.length} conversations, hasMore: ${response.has_more}`,
+    );
+
     return {
       conversations,
       hasMore: response.has_more,
@@ -56,7 +62,6 @@ export class ConversationsService {
       `/convai/conversations/${conversationId}`,
     );
 
-    // Mapear la respuesta al DTO
     const conversation: ConversationByIdResponseDto = {
       agent_id: response.agent_id,
       conversation_id: response.conversation_id,
@@ -75,7 +80,10 @@ export class ConversationsService {
       has_response_audio: response.has_response_audio,
       dinamic_variable:
         response.conversation_initiation_client_data.dynamic_variables,
+      analysis: response.analysis,
     };
+
+    this.logger.log(`Fetching conversation details for ID: ${conversationId}`);
 
     return conversation;
   }
@@ -87,6 +95,8 @@ export class ConversationsService {
       undefined,
       'arraybuffer',
     );
+    this.logger.log(`Requesting audio for conversation: ${conversationId}`);
+    this.logger.log(`Audio buffer received, size: ${audioBuffer.length} bytes`);
     return audioBuffer;
   }
 }

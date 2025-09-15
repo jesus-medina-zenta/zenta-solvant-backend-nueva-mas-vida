@@ -63,4 +63,6 @@ export class ConversationByIdResponseDto {
   has_response_audio: boolean;
 
   dinamic_variable?: any;
+
+  analysis?: any;
 }

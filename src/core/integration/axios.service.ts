@@ -64,7 +64,11 @@ export class AxiosService<T> implements IIntegrationService<T> {
       if (responseType) {
         axiosConfig.responseType = responseType;
       }
+      this.logger.log(`[GET] ${endpoint} - Starting request`);
       const response = await this.axiosInstance.get(endpoint, axiosConfig);
+      this.logger.log(
+        `[GET] ${endpoint} - Response received (${response.status})`,
+      );
       return response.data;
     } catch (error) {
       this.handleAxiosError(error, endpoint);
@@ -73,7 +77,11 @@ export class AxiosService<T> implements IIntegrationService<T> {
 
   async post(endpoint: string, data: any): Promise<T> {
     try {
+      this.logger.log(`[POST] ${endpoint} - Starting request`);
       const response = await this.axiosInstance.post(endpoint, data);
+      this.logger.log(
+        `[POST] ${endpoint} - Response received (${response.status})`,
+      );
       return response.data;
     } catch (error) {
       this.handleAxiosError(error, endpoint);
@@ -82,7 +90,11 @@ export class AxiosService<T> implements IIntegrationService<T> {
 
   async put(endpoint: string, data: any): Promise<T> {
     try {
+      this.logger.log(`[PUT] ${endpoint} - Starting request`);
       const response = await this.axiosInstance.put(endpoint, data);
+      this.logger.log(
+        `[PUT] ${endpoint} - Response received (${response.status})`,
+      );
       return response.data;
     } catch (error) {
       this.handleAxiosError(error, endpoint);
@@ -91,7 +103,9 @@ export class AxiosService<T> implements IIntegrationService<T> {
 
   async delete(endpoint: string): Promise<void> {
     try {
+      this.logger.log(`[DELETE] ${endpoint} - Starting request`);
       await this.axiosInstance.delete(endpoint);
+      this.logger.log(`[DELETE] ${endpoint} - Response received`);
     } catch (error) {
       this.handleAxiosError(error, endpoint);
     }
