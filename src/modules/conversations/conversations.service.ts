@@ -4,7 +4,7 @@ import { GetConversationsQueryDto } from './dto/get-conversations-query.dto';
 import { ListConversationsResponseDto } from './dto/list-conversations-response.dto';
 import { ListConversationsDto } from './dto/list-conversation.dto';
 import { ConversationByIdResponseDto } from './dto/conversation-by-id-response.dto';
-import { CompressionUtil } from 'src/shared/utils/compression.util';
+// ...existing code...
 
 @Injectable()
 export class ConversationsService {
@@ -82,11 +82,11 @@ export class ConversationsService {
 
   async getConversationAudio(conversationId: string): Promise<Buffer> {
     const endpoint = `/convai/conversations/${conversationId}/audio`;
-
-    // Llama a la API externa
-    const compressedAudioBuffer = await this.externalApiService.get(endpoint);
-
-    // Usa la utilidad para descomprimir el contenido
-    return CompressionUtil.decompressGzip(Buffer.from(compressedAudioBuffer));
+    const audioBuffer = await this.externalApiService.get(
+      endpoint,
+      undefined,
+      'arraybuffer',
+    );
+    return audioBuffer;
   }
 }

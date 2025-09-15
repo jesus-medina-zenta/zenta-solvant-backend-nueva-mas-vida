@@ -54,9 +54,17 @@ export class AxiosService<T> implements IIntegrationService<T> {
     return headers;
   }
 
-  async get(endpoint: string, params?: Record<string, any>): Promise<T> {
+  async get(
+    endpoint: string,
+    params?: Record<string, any>,
+    responseType?: any,
+  ): Promise<T> {
     try {
-      const response = await this.axiosInstance.get(endpoint, { params });
+      const axiosConfig: any = { params };
+      if (responseType) {
+        axiosConfig.responseType = responseType;
+      }
+      const response = await this.axiosInstance.get(endpoint, axiosConfig);
       return response.data;
     } catch (error) {
       this.handleAxiosError(error, endpoint);

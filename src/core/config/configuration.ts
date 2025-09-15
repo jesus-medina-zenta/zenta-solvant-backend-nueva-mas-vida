@@ -4,6 +4,7 @@ export const configuration = () => ({
   secretKeyAuth: process.env.SECRETKEY_AUTH,
   tokenExpiration: process.env.TOKEN_EXPIRATION || '1h',
   googleClientId: process.env.GOOGLE_CLIENT_ID,
+  //googleApplicationCredentials: process.env.GOOGLE_APPLICATION_CREDENTIALS,
   // Firebase / GCP
   gcpProjectId: process.env.GCP_PROJECT_ID,
   gcpFirestoreDatabaseId: process.env.GCP_FIRESTORE_DATABASE_ID,
