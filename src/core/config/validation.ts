@@ -14,6 +14,7 @@ export function validate(config: Record<string, any>) {
     EXTERNAL_API_SECURITY_TYPE: Joi.string().required().default('none'),
     EXTERNAL_API_KEY: Joi.string().allow('').optional(),
     EXTERNAL_API_TOKEN: Joi.string().allow('').optional(),
+    //GOOGLE_APPLICATION_CREDENTIALS: Joi.string().required(),
   });
 
   const { error, value } = schema.validate(config, { allowUnknown: true });

@@ -13,6 +13,7 @@ import {
 } from '../../shared/exceptions/database-exceptions';
 import { IDatabaseOptions } from '../../shared/interfaces/i-database-options.interface';
 import { Constants } from 'src/shared/constants/constants';
+import { readFileSync } from 'fs';
 
 @Injectable()
 export class FirestoreRepository<T extends { id?: string }>
@@ -28,6 +29,7 @@ export class FirestoreRepository<T extends { id?: string }>
   ) {
     const projectId = this.configService.get<string>('gcpProjectId');
     const databaseId = this.configService.get<string>('gcpFirestoreDatabaseId');
+
     this.collectionName = this.options.collectionName;
     if (!this.collectionName) {
       throw new MissingCollectionException();

@@ -34,7 +34,7 @@ export class AxiosService<T> implements IIntegrationService<T> {
         if (!this.securityConfig.apiKey) {
           throw new Error('API Key no proporcionada.');
         }
-        headers['x-api-key'] = this.securityConfig.apiKey;
+        headers['xi-api-key'] = this.securityConfig.apiKey;
         break;
 
       case SecurityType.BEARER_TOKEN:
@@ -54,9 +54,21 @@ export class AxiosService<T> implements IIntegrationService<T> {
     return headers;
   }
 
-  async get(endpoint: string, params?: Record<string, any>): Promise<T> {
+  async get(
+    endpoint: string,
+    params?: Record<string, any>,
+    responseType?: any,
+  ): Promise<T> {
     try {
-      const response = await this.axiosInstance.get(endpoint, { params });
+      const axiosConfig: any = { params };
+      if (responseType) {
+        axiosConfig.responseType = responseType;
+      }
+      this.logger.log(`[GET] ${endpoint} - Starting request`);
+      const response = await this.axiosInstance.get(endpoint, axiosConfig);
+      this.logger.log(
+        `[GET] ${endpoint} - Response received (${response.status})`,
+      );
       return response.data;
     } catch (error) {
       this.handleAxiosError(error, endpoint);
@@ -65,7 +77,11 @@ export class AxiosService<T> implements IIntegrationService<T> {
 
   async post(endpoint: string, data: any): Promise<T> {
     try {
+      this.logger.log(`[POST] ${endpoint} - Starting request`);
       const response = await this.axiosInstance.post(endpoint, data);
+      this.logger.log(
+        `[POST] ${endpoint} - Response received (${response.status})`,
+      );
       return response.data;
     } catch (error) {
       this.handleAxiosError(error, endpoint);
@@ -74,7 +90,11 @@ export class AxiosService<T> implements IIntegrationService<T> {
 
   async put(endpoint: string, data: any): Promise<T> {
     try {
+      this.logger.log(`[PUT] ${endpoint} - Starting request`);
       const response = await this.axiosInstance.put(endpoint, data);
+      this.logger.log(
+        `[PUT] ${endpoint} - Response received (${response.status})`,
+      );
       return response.data;
     } catch (error) {
       this.handleAxiosError(error, endpoint);
@@ -83,7 +103,9 @@ export class AxiosService<T> implements IIntegrationService<T> {
 
   async delete(endpoint: string): Promise<void> {
     try {
+      this.logger.log(`[DELETE] ${endpoint} - Starting request`);
       await this.axiosInstance.delete(endpoint);
+      this.logger.log(`[DELETE] ${endpoint} - Response received`);
     } catch (error) {
       this.handleAxiosError(error, endpoint);
     }
