@@ -12,7 +12,7 @@ import {
   GenericDatabaseException,
 } from '../../shared/exceptions/database-exceptions';
 import { IDatabaseOptions } from '../../shared/interfaces/i-database-options.interface';
-import { Constants } from 'src/shared/constants/constants';
+import { Constants } from '../../shared/constants/constants';
 import { readFileSync } from 'fs';
 
 @Injectable()

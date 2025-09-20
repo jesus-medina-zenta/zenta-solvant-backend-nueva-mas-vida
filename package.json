@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@google-cloud/firestore": "^7.11.0",
+    "@google-cloud/storage": "^7.17.1",
     "@nestjs/common": "^11.0.16",
     "@nestjs/config": "^4.0.0",
     "@nestjs/core": "^11.0.6",
@@ -28,6 +29,7 @@
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.0.6",
     "@nestjs/swagger": "^11.0.3",
+    "audiobuffer-to-wav": "^1.0.0",
     "axios": "^1.8.2",
     "bcrypt": "^5.1.1",
     "class-transformer": "^0.5.1",
@@ -35,6 +37,7 @@
     "google-auth-library": "^9.15.1",
     "helmet": "^8.0.0",
     "joi": "^17.13.3",
+    "node-web-audio-api": "^1.0.4",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.1.14",

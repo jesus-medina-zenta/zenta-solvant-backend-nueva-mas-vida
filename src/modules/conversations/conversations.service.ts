@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { IIntegrationService } from 'src/shared/interfaces/i-integration-service.interface';
+import { IAudioStorageService } from 'src/shared/interfaces/i-audio-storage-service.interface';
 import { GetConversationsQueryDto } from './dto/get-conversations-query.dto';
 import { ListConversationsResponseDto } from './dto/list-conversations-response.dto';
 import { ListConversationsDto } from './dto/list-conversation.dto';
@@ -12,6 +13,8 @@ export class ConversationsService {
   constructor(
     @Inject('EXTERNAL_API_SERVICE')
     private readonly externalApiService: IIntegrationService<any>,
+    @Inject('AUDIO_STORAGE_REPOSITORY')
+    private readonly audioStorageService: IAudioStorageService,
   ) {}
 
   async getConversations(
@@ -89,14 +92,60 @@ export class ConversationsService {
   }
 
   async getConversationAudio(conversationId: string): Promise<Buffer> {
+    this.logger.log(
+      `Starting audio retrieval for conversation: ${conversationId}`,
+    );
+
     const endpoint = `/convai/conversations/${conversationId}/audio`;
     const audioBuffer = await this.externalApiService.get(
       endpoint,
       undefined,
       'arraybuffer',
     );
-    this.logger.log(`Requesting audio for conversation: ${conversationId}`);
-    this.logger.log(`Audio buffer received, size: ${audioBuffer.length} bytes`);
+
+    this.logger.log(
+      `Audio downloaded successfully - Size: ${audioBuffer.length} bytes`,
+    );
+
     return audioBuffer;
+  }
+
+  async saveConversationAudio(
+    conversationId: string,
+    fileName: string,
+    fileExtension: string = 'mp3',
+  ): Promise<string> {
+    try {
+      this.logger.log(
+        `Starting audio save process for conversation: ${conversationId}`,
+      );
+
+      const audioBuffer = await this.getConversationAudio(conversationId);
+
+      if (!audioBuffer || audioBuffer.length === 0) {
+        throw new Error(
+          `No audio data found for conversation: ${conversationId}`,
+        );
+      }
+      const gcsPath = await this.audioStorageService.uploadAudio(
+        fileName,
+        audioBuffer,
+        fileExtension,
+        'audios',
+      );
+
+      this.logger.log(`Audio saved successfully to GCS: ${gcsPath}`);
+
+      return gcsPath;
+    } catch (error) {
+      this.logger.error(
+        `Error saving audio for conversation ${conversationId}:`,
+        error.message,
+        error.stack,
+      );
+      throw new Error(
+        `Failed to save audio for conversation ${conversationId}: ${error.message}`,
+      );
+    }
   }
 }
