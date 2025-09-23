@@ -1,15 +1,12 @@
 import {
   Controller,
   Post,
-  Body,
   Headers,
   HttpStatus,
   HttpException,
   Logger,
-  RawBodyRequest,
   Req,
 } from '@nestjs/common';
-import { Request } from 'express';
 import { WebhooksService } from './webhooks.service';
 import { WebhookResponseDto } from './dto/webhook-response.dto';
 
@@ -21,31 +18,29 @@ export class WebhooksController {
 
   @Post()
   async receiveWebhook(
-    @Body() webhookPayload: any, // Recibir el payload de ElevenLabs
+    @Req() req: any,
     @Headers('elevenlabs-signature') signature?: string,
     @Headers('user-agent') userAgent?: string,
-    @Req() req?: RawBodyRequest<Request>,
   ): Promise<WebhookResponseDto> {
     try {
-      const rawBody = req?.rawBody?.toString();
+      const webhookPayload = req.body;
+      const rawBodyString = req.rawBody ? req.rawBody.toString('utf8') : null;
 
-      const result = await this.webhooksService.processElevenLabsWebhook(
+      return await this.webhooksService.processElevenLabsWebhook(
         webhookPayload,
         signature,
         userAgent,
-        rawBody,
+        rawBodyString,
       );
-
-      return result;
     } catch (error) {
-      this.logger.error(`Webhook controller error`, {
+      this.logger.error('Webhook processing error', {
         error: error.message,
-        userAgent,
+        hasUserAgent: !!userAgent,
       });
 
       if (error.message === 'UNAUTHORIZED') {
         throw new HttpException(
-          'Invalid webhook signature',
+          'Unauthorized webhook request',
           HttpStatus.UNAUTHORIZED,
         );
       }
@@ -55,7 +50,7 @@ export class WebhooksController {
       }
 
       throw new HttpException(
-        'Internal server error processing ElevenLabs webhook',
+        'Internal server error',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }

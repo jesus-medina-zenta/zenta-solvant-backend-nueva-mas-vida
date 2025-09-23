@@ -14,4 +14,6 @@ export const configuration = () => ({
   externalApiSecurityType: process.env.EXTERNAL_API_SECURITY_TYPE,
   externalApiKey: process.env.EXTERNAL_API_KEY,
   externalApiToken: process.env.EXTERNAL_API_TOKEN,
+  // ElevenLabs Webhooks
+  elevenLabsWebhookSecret: process.env.ELEVENLABS_WEBHOOK_SECRET,
 });

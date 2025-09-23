@@ -1,5 +1,5 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
-import { WebhookRequestDto } from './dto/webhook-request.dto';
+import { ConfigService } from '@nestjs/config';
 import { WebhookResponseDto } from './dto/webhook-response.dto';
 import {
   ConvaiWebhookData,
@@ -16,84 +16,18 @@ export class WebhooksService {
     @Inject('REGISTROS_LLAMADAS_REPOSITORY')
     private readonly registrosLlamadasRepository: IDatabaseService<ProcessedConversationData>,
     private readonly conversationsService: ConversationsService,
+    private readonly configService: ConfigService,
   ) {}
 
   /**
-   * Procesa un webhook transformado de ElevenLabs para extraer y almacenar
-   * datos de transcripción post-llamada. Maneja la persistencia en Firestore
-   * y la validación de tipos de eventos soportados.
+   * Procesa webhooks de ElevenLabs validando firma HMAC, extrayendo datos de transcripción
+   * y persistiendo en Firestore con almacenamiento de audio en GCS.
    *
-   * @param webhookData - Datos del webhook ya transformados al formato interno
-   * @returns Respuesta indicando éxito o fallo del procesamiento
-   */
-  async processWebhook(
-    webhookData: WebhookRequestDto,
-  ): Promise<WebhookResponseDto> {
-    const eventId = this.generateEventId();
-
-    try {
-      this.logger.log(`Processing ElevenLabs webhook`, {
-        eventId,
-        event: webhookData.event,
-        conversationId: webhookData.data?.data?.conversation_id,
-        timestamp: webhookData.timestamp,
-      });
-
-      // Solo procesar webhooks de tipo post_call_transcription
-      if (webhookData.event === 'post_call_transcription') {
-        await this.processPostCallTranscription(
-          webhookData.data as ConvaiWebhookData,
-          eventId,
-        );
-      } else {
-        this.logger.warn(`Unsupported webhook event: ${webhookData.event}`, {
-          eventId,
-        });
-        return new WebhookResponseDto(
-          false,
-          `Unsupported webhook event: ${webhookData.event}`,
-          eventId,
-        );
-      }
-
-      this.logger.log(`ElevenLabs webhook processed successfully`, {
-        eventId,
-        event: webhookData.event,
-        conversationId: webhookData.data?.data?.conversation_id,
-      });
-
-      return new WebhookResponseDto(
-        true,
-        `Post call transcription processed successfully`,
-        eventId,
-      );
-    } catch (error) {
-      this.logger.error(`Failed to process ElevenLabs webhook`, {
-        eventId,
-        event: webhookData.event,
-        conversationId: webhookData.data?.data?.conversation_id,
-        error: error.message,
-        stack: error.stack,
-      });
-
-      return new WebhookResponseDto(
-        false,
-        `Failed to process webhook: ${error.message}`,
-        eventId,
-      );
-    }
-  }
-
-  /**
-   * Punto de entrada principal para webhooks de ElevenLabs. Realiza validaciones
-   * de seguridad, autenticación HMAC, y transformación de datos antes del
-   * procesamiento. Implementa el patrón de validación por capas.
-   *
-   * @param webhookPayload - Payload crudo recibido desde ElevenLabs
-   * @param signature - Firma HMAC-SHA256 para validación de autenticidad
-   * @param userAgent - User-Agent del request para validación de origen
-   * @param rawBody - Cuerpo crudo del request para validación de firma
-   * @returns Respuesta del procesamiento del webhook
+   * @param webhookPayload - Payload del webhook de ElevenLabs
+   * @param signature - Firma HMAC-SHA256 para validación
+   * @param userAgent - User-Agent para validación de origen
+   * @param rawBody - Cuerpo crudo para validación de firma
+   * @returns Respuesta del procesamiento
    */
   async processElevenLabsWebhook(
     webhookPayload: any,
@@ -101,68 +35,92 @@ export class WebhooksService {
     userAgent?: string,
     rawBody?: string,
   ): Promise<WebhookResponseDto> {
-    try {
-      // ElevenLabs envía directamente el objeto body
-      const webhookData = webhookPayload.body || webhookPayload;
+    const eventId = this.generateEventId();
+    const webhookData = webhookPayload.body || webhookPayload;
 
-      this.logger.log(`Received ElevenLabs webhook`, {
+    try {
+      this.logger.log('Processing ElevenLabs webhook', {
+        eventId,
         conversationId: webhookData.data?.conversation_id,
         agentId: webhookData.data?.agent_id,
         status: webhookData.data?.status,
-        userAgent,
         hasSignature: !!signature,
-        timestamp: new Date().toISOString(),
       });
 
-      // Validar que viene de ElevenLabs
+      // Validar origen si se proporciona user-agent
       if (userAgent && !userAgent.includes('ElevenLabs')) {
-        this.logger.warn(`Suspicious webhook source`, {
+        this.logger.warn('Webhook from non-ElevenLabs source detected', {
+          eventId,
           userAgent,
           conversationId: webhookData.data?.conversation_id,
         });
       }
 
-      // Validación de firma HMAC deshabilitada temporalmente
-      if (signature) {
-        this.logger.debug(
-          `Webhook signature received but validation disabled`,
-          {
-            hasSignature: !!signature,
-            signatureLength: signature?.length,
+      // Validar firma HMAC
+      const webhookSecret = this.configService.get<string>(
+        'elevenLabsWebhookSecret',
+      );
+      if (signature && webhookSecret && rawBody) {
+        const isValidSignature = await this.validateElevenLabsSignature(
+          rawBody,
+          signature,
+          webhookSecret,
+        );
+
+        if (!isValidSignature) {
+          this.logger.warn('Invalid webhook signature', {
+            eventId,
             conversationId: webhookData.data?.conversation_id,
-          },
+          });
+          throw new Error('Invalid webhook signature');
+        }
+      } else if (signature && !webhookSecret) {
+        this.logger.warn(
+          'Webhook signature received but secret not configured',
+          { eventId },
         );
       }
 
-      // Transformar el payload al formato esperado por el service
-      const transformedData: WebhookRequestDto = {
-        event: 'post_call_transcription', // ElevenLabs siempre envía este tipo de evento
-        source: 'elevenlabs',
-        data: webhookData, // Los datos vienen directamente en la estructura correcta
-        timestamp: new Date(webhookData.event_timestamp * 1000).toISOString(),
-      };
+      // Procesar solo eventos post_call_transcription
+      if (!webhookData.data || !webhookData.data.conversation_id) {
+        this.logger.warn('Invalid webhook payload structure', { eventId });
+        return new WebhookResponseDto(
+          false,
+          'Invalid webhook payload structure',
+          eventId,
+        );
+      }
 
-      // Procesar el webhook
-      return await this.processWebhook(transformedData);
-    } catch (error) {
-      this.logger.error(`ElevenLabs webhook processing failed`, {
-        error: error.message,
-        stack: error.stack,
-        userAgent,
+      await this.processPostCallTranscription(webhookData, eventId);
+
+      this.logger.log('ElevenLabs webhook processed successfully', {
+        eventId,
+        conversationId: webhookData.data.conversation_id,
       });
+
+      return new WebhookResponseDto(
+        true,
+        'Post call transcription processed successfully',
+        eventId,
+      );
+    } catch (error) {
+      this.logger.error('ElevenLabs webhook processing failed', {
+        eventId,
+        conversationId: webhookData.data?.conversation_id,
+        error: error.message,
+      });
+
+      if (error.message === 'Invalid webhook signature') {
+        throw new Error('UNAUTHORIZED');
+      }
 
       throw error;
     }
   }
 
   /**
-   * Procesa específicamente eventos de transcripción post-llamada de ElevenLabs.
-   * Transforma los datos a la estructura interna, aplica limpieza de valores undefined,
-   * persiste en Firestore y gestiona el almacenamiento de audio en GCS.
-   *
-   * @param webhookData - Datos estructurados del webhook de ElevenLabs
-   * @param eventId - Identificador único del evento para trazabilidad
-   * @private
+   * Procesa eventos de transcripción post-llamada transformando datos,
+   * persistiendo en Firestore y almacenando audio en GCS.
    */
   private async processPostCallTranscription(
     webhookData: ConvaiWebhookData,
@@ -170,14 +128,12 @@ export class WebhooksService {
   ): Promise<void> {
     const { data } = webhookData;
 
-    this.logger.log(`Processing post call transcription`, {
+    this.logger.log('Processing post call transcription', {
       eventId,
       conversationId: data.conversation_id,
       agentId: data.agent_id,
-      callDuration: data.metadata.call_duration_secs,
+      callDuration: data.metadata?.call_duration_secs,
       status: data.status,
-      llmPrice: data.metadata.llm_price,
-      mainLanguage: data.metadata.main_language,
     });
 
     // Mapear la información según la nueva estructura de ElevenLabs
@@ -216,22 +172,8 @@ export class WebhooksService {
     // Guardar en Firestore
     await this.saveConversationData(processedData, eventId);
 
-    // Guardar audio en bucket después de procesar exitosamente
-    try {
-      await this.conversationsService.saveConversationAudio(
-        data.conversation_id,
-      );
-      this.logger.log(`Conversation audio saved successfully`, {
-        eventId,
-        conversationId: data.conversation_id,
-      });
-    } catch (error) {
-      this.logger.warn(`Failed to save conversation audio`, {
-        eventId,
-        conversationId: data.conversation_id,
-        error: error.message,
-      });
-    }
+    // Procesar audio de forma asíncrona para no bloquear la respuesta
+    this.processAudioAsync(data.conversation_id, eventId);
   }
 
   /**
@@ -253,35 +195,50 @@ export class WebhooksService {
       // 1. conversation_id (document ID)
       // 2. agent_id
       // 3. dynamic_variables.id_carga
-      const collectionName = 'registros_llamadas';
       const documentId = data.conversation_id;
 
-      this.logger.log(`Saving conversation data to Firestore`, {
+      this.logger.debug('Saving conversation data', {
         eventId,
         conversationId: data.conversation_id,
         agentId: data.agent_id,
-        idCarga: data.dynamic_variables?.id_carga,
-        collection: collectionName,
       });
 
       await this.registrosLlamadasRepository.createOrReplace(documentId, data);
 
-      this.logger.log(`Conversation data saved successfully`, {
+      this.logger.log('Conversation data saved successfully', {
         eventId,
         conversationId: data.conversation_id,
-        analysisKeys: Object.keys(data.analysis || {}).length,
-        dynamicVariables: Object.keys(data.dynamic_variables || {}).length,
-        llmPrice: data.llm_price,
-        callCharge: data.call_charge,
       });
     } catch (error) {
-      this.logger.error(`Failed to save conversation data`, {
+      this.logger.error('Failed to save conversation data', {
         eventId,
         conversationId: data.conversation_id,
         error: error.message,
-        stack: error.stack,
       });
       throw error;
+    }
+  }
+
+  /**
+   * Procesa el audio de la conversación de forma asíncrona para no bloquear
+   * la respuesta del webhook. Maneja errores de forma independiente.
+   */
+  private async processAudioAsync(
+    conversationId: string,
+    eventId: string,
+  ): Promise<void> {
+    try {
+      await this.conversationsService.saveConversationAudio(conversationId);
+      this.logger.log('Audio processed successfully', {
+        eventId,
+        conversationId,
+      });
+    } catch (error) {
+      this.logger.warn('Audio processing failed', {
+        eventId,
+        conversationId,
+        error: error.message,
+      });
     }
   }
 
@@ -297,16 +254,17 @@ export class WebhooksService {
   }
 
   /**
-   * Valida la autenticidad de webhooks mediante verificación de firma HMAC-SHA256.
-   * Soporta múltiples formatos de firma: timestamp+hash (Stripe-style) y hash directo.
+   * Valida la autenticidad de webhooks de ElevenLabs mediante verificación de firma HMAC-SHA256.
+   * Implementa el formato específico de ElevenLabs: "t=timestamp,v0=hash".
    * Implementa comparación timing-safe para prevenir ataques de timing.
    *
    * @param payload - Cuerpo del request a validar
-   * @param signature - Firma HMAC recibida en headers
+   * @param signature - Firma HMAC recibida en el header 'elevenlabs-signature'
    * @param secret - Secreto compartido para validación HMAC
    * @returns true si la firma es válida, false en caso contrario
+   * @private
    */
-  async validateWebhookSignature(
+  private async validateElevenLabsSignature(
     payload: string,
     signature: string,
     secret: string,
@@ -314,58 +272,34 @@ export class WebhooksService {
     try {
       const crypto = require('crypto');
 
-      this.logger.debug(`Validating webhook signature`, {
-        payloadLength: payload?.length,
-        hasSecret: !!secret,
-      });
-
-      // ElevenLabs puede usar diferentes formatos
-      // Formato 1: "t=timestamp,v0=hash" (similar a Stripe)
-      if (signature.includes('t=') && signature.includes('v0=')) {
-        const sigParts = signature.split(',');
-        const timestamp = sigParts
-          .find((part) => part.startsWith('t='))
-          ?.slice(2);
-        const hash = sigParts.find((part) => part.startsWith('v0='))?.slice(3);
-
-        if (!timestamp || !hash) {
-          this.logger.warn(`Invalid signature format with t= and v0=`);
-          return false;
-        }
-
-        const signedPayload = timestamp + payload;
-        const expectedSignature = crypto
-          .createHmac('sha256', secret)
-          .update(signedPayload, 'utf8')
-          .digest('hex');
-
-        return crypto.timingSafeEqual(
-          Buffer.from(expectedSignature, 'hex'),
-          Buffer.from(hash, 'hex'),
-        );
+      if (!signature.includes('t=') || !signature.includes('v0=')) {
+        this.logger.warn('Invalid signature format received');
+        return false;
       }
 
-      // Formato 2: Hash directo (solo el hash HMAC-SHA256)
-      const expectedSignature = crypto
+      const sigParts = signature.split(',');
+      const timestampPart = sigParts.find((part) => part.startsWith('t='));
+      const hashPart = sigParts.find((part) => part.startsWith('v0='));
+
+      if (!timestampPart || !hashPart) {
+        return false;
+      }
+
+      const timestamp = timestampPart.slice(2);
+      const receivedHash = hashPart.slice(3);
+      const signedPayload = timestamp + '.' + payload;
+
+      const expectedHash = crypto
         .createHmac('sha256', secret)
-        .update(payload, 'utf8')
+        .update(signedPayload, 'utf8')
         .digest('hex');
 
-      // Permitir signature con o sin prefijo 'sha256='
-      const cleanSignature = signature.startsWith('sha256=')
-        ? signature.slice(7)
-        : signature;
-
       return crypto.timingSafeEqual(
-        Buffer.from(expectedSignature, 'hex'),
-        Buffer.from(cleanSignature, 'hex'),
+        Buffer.from(expectedHash, 'hex'),
+        Buffer.from(receivedHash, 'hex'),
       );
     } catch (error) {
-      this.logger.error(`Signature validation failed`, {
-        error: error.message,
-        hasSignature: !!signature,
-        hasSecret: !!secret,
-      });
+      this.logger.error('Signature validation error', { error: error.message });
       return false;
     }
   }
