@@ -110,11 +110,7 @@ export class ConversationsService {
     return audioBuffer;
   }
 
-  async saveConversationAudio(
-    conversationId: string,
-    fileName: string,
-    fileExtension: string = 'mp3',
-  ): Promise<string> {
+  async saveConversationAudio(conversationId: string): Promise<string> {
     try {
       this.logger.log(
         `Starting audio save process for conversation: ${conversationId}`,
@@ -127,11 +123,17 @@ export class ConversationsService {
           `No audio data found for conversation: ${conversationId}`,
         );
       }
+
+      // Usar el conversationId como nombre del archivo
+      const fileName = conversationId;
+      const fileExtension = 'mp3';
+      const folder = 'audios';
+
       const gcsPath = await this.audioStorageService.uploadAudio(
         fileName,
         audioBuffer,
         fileExtension,
-        'audios',
+        folder,
       );
 
       this.logger.log(`Audio saved successfully to GCS: ${gcsPath}`);

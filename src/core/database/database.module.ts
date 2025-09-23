@@ -34,7 +34,21 @@ import { CsrfToken } from 'src/shared/entities/csrf-token.entity';
       },
       inject: [ConfigService],
     },
+    {
+      provide: 'REGISTROS_LLAMADAS_REPOSITORY',
+      useFactory: (configService: ConfigService) => {
+        return new FirestoreRepository<any>(configService, {
+          collectionName: 'registros_llamadas',
+        });
+      },
+      inject: [ConfigService],
+    },
   ],
-  exports: ['USER_REPOSITORY', 'GENERIC_REPOSITORY', 'CSRF_TOKEN_REPOSITORY'],
+  exports: [
+    'USER_REPOSITORY',
+    'GENERIC_REPOSITORY',
+    'CSRF_TOKEN_REPOSITORY',
+    'REGISTROS_LLAMADAS_REPOSITORY',
+  ],
 })
 export class DatabaseModule {}

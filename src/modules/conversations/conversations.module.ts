@@ -8,5 +8,6 @@ import { CoreModule } from 'src/core/core.module';
   imports: [SharedModule, CoreModule],
   controllers: [ConversationsController],
   providers: [ConversationsService],
+  exports: [ConversationsService],
 })
 export class ConversationsModule {}
