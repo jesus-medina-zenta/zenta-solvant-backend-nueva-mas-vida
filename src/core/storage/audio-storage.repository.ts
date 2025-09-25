@@ -92,7 +92,14 @@ export class AudioStorageRepository implements IAudioStorageService {
       this.handleStorageError(error, audioId);
     }
   }
-  getAudioPath(
+  /**
+   * Returns the Google Cloud Storage path for the specified audio file.
+   * @param audioId - The unique identifier for the audio file.
+   * @param fileExtension - The file extension (e.g., 'mp3', 'wav').
+   * @param folder - Optional folder name where the audio is stored.
+   * @returns The GCS path to the audio file.
+   */
+  public getAudioPath(
     audioId: string,
     fileExtension?: string,
     folder?: string,
