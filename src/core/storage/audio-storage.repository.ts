@@ -116,8 +116,8 @@ export class AudioStorageRepository implements IAudioStorageService {
   }
 
   /**
-   * @deprecated Usar getAudioPath() para acceso desde pipeline GCP
-   * Obtiene la URL HTTP del archivo (no funcional para archivos privados)
+   * @deprecated Use getAudioPath() for GCP pipeline access
+   * Gets the HTTP URL of the file (not functional for private files)
    */
   getAudioUrl(
     audioId: string,
@@ -161,22 +161,36 @@ export class AudioStorageRepository implements IAudioStorageService {
     }
   }
 
-  async audioExists(audioId: string): Promise<boolean> {
+  async audioExists(
+    audioId: string,
+    folder?: string,
+    fileExtension?: string,
+  ): Promise<boolean> {
     try {
-      const commonExtensions = ['mp3', 'wav', 'ogg', 'm4a'];
+      const bucket = this.storage.bucket(this.bucketName);
 
-      for (const ext of commonExtensions) {
-        const fileName = `${audioId}.${ext}`;
-        const bucket = this.storage.bucket(this.bucketName);
-        const file = bucket.file(fileName);
+      if (fileExtension) {
+        const fileName = `${audioId}.${fileExtension}`;
+        const fullPath = folder ? `${folder}/${fileName}` : fileName;
+        const file = bucket.file(fullPath);
         const [exists] = await file.exists();
+        return exists;
+      } else {
+        const commonExtensions = ['mp3', 'wav', 'ogg', 'm4a'];
 
-        if (exists) {
-          return true;
+        for (const ext of commonExtensions) {
+          const fileName = `${audioId}.${ext}`;
+          const fullPath = folder ? `${folder}/${fileName}` : fileName;
+          const file = bucket.file(fullPath);
+          const [exists] = await file.exists();
+
+          if (exists) {
+            return true;
+          }
         }
-      }
 
-      return false;
+        return false;
+      }
     } catch (error) {
       this.handleStorageError(error, audioId);
     }
