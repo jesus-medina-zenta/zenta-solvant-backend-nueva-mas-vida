@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { FirestoreRepository } from './firestore.repository';
 import { User } from 'src/shared/entities/user.entity';
 import { CsrfToken } from 'src/shared/entities/csrf-token.entity';
+import { AudiosStatus } from 'src/shared/entities/audios-status.entity';
 
 @Module({
   imports: [ConfigModule],
@@ -43,12 +44,22 @@ import { CsrfToken } from 'src/shared/entities/csrf-token.entity';
       },
       inject: [ConfigService],
     },
+    {
+      provide: 'AUDIOS_STATUS_REPOSITORY',
+      useFactory: (configService: ConfigService) => {
+        return new FirestoreRepository<AudiosStatus>(configService, {
+          collectionName: 'audios_status',
+        });
+      },
+      inject: [ConfigService],
+    },
   ],
   exports: [
     'USER_REPOSITORY',
     'GENERIC_REPOSITORY',
     'CSRF_TOKEN_REPOSITORY',
     'REGISTROS_LLAMADAS_REPOSITORY',
+    'AUDIOS_STATUS_REPOSITORY',
   ],
 })
 export class DatabaseModule {}
