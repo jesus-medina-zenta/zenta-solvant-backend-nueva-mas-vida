@@ -6,19 +6,9 @@ export interface IAudioStorageService {
     folder?: string,
   ): Promise<string>;
 
-  getAudioUrl(audioId: string, fileExtension?: string, folder?: string): string;
-
   getAudioPath(
     audioId: string,
     fileExtension?: string,
     folder?: string,
   ): string;
-
-  deleteAudio(audioId: string): Promise<void>;
-
-  audioExists(
-    audioId: string,
-    folder?: string,
-    fileExtension?: string,
-  ): Promise<boolean>;
 }

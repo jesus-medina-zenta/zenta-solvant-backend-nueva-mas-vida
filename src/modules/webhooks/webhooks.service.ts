@@ -151,7 +151,7 @@ export class WebhooksService {
 
     await this.saveConversationData(processedData, eventId);
 
-    this.processAudioAsync(data.conversation_id, eventId);
+    await this.processAudioAsync(data.conversation_id, eventId);
   }
 
   private async saveConversationData(
