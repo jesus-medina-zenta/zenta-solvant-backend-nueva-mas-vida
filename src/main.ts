@@ -35,7 +35,10 @@ async function bootstrap() {
     )
     .build();
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup(`${prefix}/swagger-doc`, app, document);
+  SwaggerModule.setup(`${prefix}/swagger-doc`, app, document, {
+    yamlDocumentUrl: `${prefix}/swagger-doc/yaml`,
+  });
+
   logger.log(
     `Swagger running on http://localhost:${port}/${prefix}/swagger-doc`,
   );

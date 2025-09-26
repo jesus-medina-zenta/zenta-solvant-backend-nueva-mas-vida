@@ -1,0 +1,219 @@
+openapi: 3.0.0
+paths:
+  /api/v1/zenta/webhooks:
+    post:
+      description: >-
+        Processes ElevenLabs post-call transcription webhooks and saves
+        conversation data
+      operationId: WebhooksController_receiveWebhook
+      parameters:
+        - name: elevenlabs-signature
+          required: false
+          in: header
+          description: ElevenLabs webhook signature for validation
+          schema:
+            type: string
+        - name: user-agent
+          required: false
+          in: header
+          description: User agent header, should contain "ElevenLabs"
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Webhook processed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookResponseDto'
+        '400':
+          description: Bad Request - Invalid payload structure.
+        '401':
+          description: Unauthorized - Invalid webhook signature.
+        '403':
+          description: Forbidden - Insufficient permissions.
+        '500':
+          description: Internal Server Error - Processing failed.
+      summary: Process ElevenLabs webhook
+      tags:
+        - webhooks
+info:
+  title: Template Nest Zenta
+  description: Ejemplo de template para NestJS a utilizar en Zenta.
+  version: '1.0'
+  contact: {}
+tags: []
+servers: []
+components:
+  securitySchemes:
+    bearer:
+      scheme: bearer
+      bearerFormat: JWT
+      type: http
+    x-csrf-token:
+      type: apiKey
+      in: header
+      name: x-csrf-token
+  schemas:
+    LoginRq:
+      type: object
+      properties:
+        idToken:
+          type: string
+          description: idToken proporcionado por Google OAuth
+          example: eyJhbGciOiJSUzI1NiIsImtpZCI6IjIxMTI3YzYxMz...
+      required:
+        - idToken
+    UserData:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        lastname:
+          type: string
+        username:
+          type: string
+        email:
+          type: string
+        status:
+          type: boolean
+          nullable: true
+        role:
+          type: string
+          nullable: true
+      required:
+        - id
+        - name
+        - lastname
+        - username
+        - email
+        - status
+        - role
+    LoginRs:
+      type: object
+      properties:
+        code:
+          type: number
+        message:
+          type: string
+        token:
+          type: string
+          nullable: true
+        data:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/UserData'
+        csrfToken:
+          type: string
+          nullable: true
+      required:
+        - code
+        - message
+        - token
+        - data
+        - csrfToken
+    CreateUserDto:
+      type: object
+      properties:
+        email:
+          type: string
+          example: user@example.com
+        username:
+          type: string
+          example: Jdoe
+        name:
+          type: string
+          example: John
+        lastname:
+          type: string
+          example: Doe
+        documentId:
+          type: string
+          example: '1234567890'
+        role:
+          type: string
+          example: USER
+          description: Rol del usuario
+        password:
+          type: string
+          example: yourStrongPass123!
+        status:
+          type: boolean
+          example: true
+      required:
+        - email
+        - username
+    User:
+      type: object
+      properties: {}
+    UpdateUserDto:
+      type: object
+      properties:
+        email:
+          type: string
+          example: user@example.com
+        username:
+          type: string
+          example: Jdoe
+        name:
+          type: string
+          example: John
+        lastname:
+          type: string
+          example: Doe
+        documentId:
+          type: string
+          example: '1234567890'
+        role:
+          type: string
+          example: USER
+          description: Rol del usuario
+        password:
+          type: string
+          example: yourStrongPass123!
+        status:
+          type: boolean
+          example: true
+    CreateGenericDto:
+      type: object
+      properties:
+        name:
+          type: string
+          example: Jdoe
+        description:
+          type: string
+          example: John
+        status:
+          type: string
+          example: John
+      required:
+        - name
+    Generic:
+      type: object
+      properties: {}
+    UpdateGenericDto:
+      type: object
+      properties:
+        name:
+          type: string
+          example: Jdoe
+        description:
+          type: string
+          example: John
+        status:
+          type: string
+          example: John
+    ListConversationsDto:
+      type: object
+      properties: {}
+    ConversationByIdResponseDto:
+      type: object
+      properties: {}
+    WebhookResponseDto:
+      type: object
+      properties: {}
+    DetailedBatchCallDto:
+      type: object
+      properties: {}
