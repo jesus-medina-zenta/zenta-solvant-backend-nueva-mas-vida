@@ -10,11 +10,12 @@ export function validate(config: Record<string, any>) {
     GOOGLE_CLIENT_ID: Joi.string().required(),
     GCP_PROJECT_ID: Joi.string().required(),
     GCP_FIRESTORE_DATABASE_ID: Joi.string().allow('').optional(),
+    GCP_AUDIO_BUCKET_NAME: Joi.string().required(),
     EXTERNAL_API_BASE_URL: Joi.string().required(),
     EXTERNAL_API_SECURITY_TYPE: Joi.string().required().default('none'),
     EXTERNAL_API_KEY: Joi.string().allow('').optional(),
     EXTERNAL_API_TOKEN: Joi.string().allow('').optional(),
-    //GOOGLE_APPLICATION_CREDENTIALS: Joi.string().required(),
+    ELEVENLABS_WEBHOOK_SECRET: Joi.string().optional(),
   });
 
   const { error, value } = schema.validate(config, { allowUnknown: true });

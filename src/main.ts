@@ -11,6 +11,7 @@ async function bootstrap() {
   const logger = new Logger('NestApplication');
   const app = await NestFactory.create(AppModule, {
     logger: new CustomLogger(),
+    rawBody: true, // Habilitar rawBody globalmente (NestJS way)
   });
 
   app.use(helmet());
@@ -20,7 +21,7 @@ async function bootstrap() {
   const port = configService.get('port');
 
   await enableCors(app, configService);
-  
+
   app.setGlobalPrefix(prefix);
 
   const config = new DocumentBuilder()
@@ -48,11 +49,10 @@ async function enableCors(app, configService) {
   if (!configService.get('listCors')) {
     return;
   }
-  if(configService.get('listCors') === '*') {
+  if (configService.get('listCors') === '*') {
     app.enableCors();
     return;
-  }
-  else if (configService.get('listCors').includes(',')) {   
+  } else if (configService.get('listCors').includes(',')) {
     const corsOptions = {
       origin: [configService.get('listCors')],
       credentials: true,

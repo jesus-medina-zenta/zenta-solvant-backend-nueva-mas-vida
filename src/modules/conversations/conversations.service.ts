@@ -1,5 +1,8 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { IIntegrationService } from 'src/shared/interfaces/i-integration-service.interface';
+import { IAudioStorageService } from 'src/shared/interfaces/i-audio-storage-service.interface';
+import { IDatabaseService } from 'src/shared/interfaces/i-database-service.interface';
+import { AudiosStatus } from 'src/shared/entities/audios-status.entity';
 import { GetConversationsQueryDto } from './dto/get-conversations-query.dto';
 import { ListConversationsResponseDto } from './dto/list-conversations-response.dto';
 import { ListConversationsDto } from './dto/list-conversation.dto';
@@ -12,6 +15,10 @@ export class ConversationsService {
   constructor(
     @Inject('EXTERNAL_API_SERVICE')
     private readonly externalApiService: IIntegrationService<any>,
+    @Inject('AUDIO_STORAGE_REPOSITORY')
+    private readonly audioStorageService: IAudioStorageService,
+    @Inject('AUDIOS_STATUS_REPOSITORY')
+    private readonly audiosStatusRepository: IDatabaseService<AudiosStatus>,
   ) {}
 
   async getConversations(
@@ -89,14 +96,99 @@ export class ConversationsService {
   }
 
   async getConversationAudio(conversationId: string): Promise<Buffer> {
+    this.logger.log(
+      `Starting audio retrieval for conversation: ${conversationId}`,
+    );
+
     const endpoint = `/convai/conversations/${conversationId}/audio`;
     const audioBuffer = await this.externalApiService.get(
       endpoint,
       undefined,
       'arraybuffer',
     );
-    this.logger.log(`Requesting audio for conversation: ${conversationId}`);
-    this.logger.log(`Audio buffer received, size: ${audioBuffer.length} bytes`);
+
+    this.logger.log(
+      `Audio downloaded successfully - Size: ${audioBuffer.length} bytes`,
+    );
+
     return audioBuffer;
+  }
+
+  async saveConversationAudio(conversationId: string): Promise<string> {
+    try {
+      this.logger.log(
+        `Starting audio save process for conversation: ${conversationId}`,
+      );
+
+      const audioBuffer = await this.getConversationAudio(conversationId);
+
+      if (!audioBuffer || audioBuffer.length === 0) {
+        await this.saveAudioStatus(conversationId, 'AUDIO_FAILED');
+        throw new Error(
+          `No audio data found for conversation: ${conversationId}`,
+        );
+      }
+
+      const fileName = conversationId;
+      const fileExtension = 'mp3';
+      const folder = 'audios';
+
+      const gcsPath = await this.audioStorageService.uploadAudio(
+        fileName,
+        audioBuffer,
+        fileExtension,
+        folder,
+      );
+
+      this.logger.log(`Audio saved successfully to GCS: ${gcsPath}`);
+
+      await this.saveAudioStatus(conversationId, 'AUDIO_SAVED_IN_BUCKET');
+
+      return gcsPath;
+    } catch (error) {
+      await this.saveAudioStatus(conversationId, 'AUDIO_FAILED');
+      this.logger.error(
+        `Error saving audio for conversation ${conversationId}:`,
+        error.message,
+        error.stack,
+      );
+      throw new Error(
+        `Failed to save audio for conversation ${conversationId}: ${error.message}`,
+      );
+    }
+  }
+
+  private async saveAudioStatus(
+    conversationId: string,
+    status: AudiosStatus['status'],
+  ): Promise<void> {
+    try {
+      const timestamp = Math.floor(Date.now() / 1000);
+      const existingRecord =
+        await this.audiosStatusRepository.getById(conversationId);
+
+      if (existingRecord) {
+        await this.audiosStatusRepository.update(conversationId, {
+          status,
+          update_at: timestamp,
+        });
+      } else {
+        const statusRecord: AudiosStatus = {
+          id_conversacion: conversationId,
+          status,
+          time_stamp: timestamp,
+          update_at: timestamp,
+        };
+        await this.audiosStatusRepository.createOrReplace(
+          conversationId,
+          statusRecord,
+        );
+      }
+    } catch (error) {
+      this.logger.error(
+        `Error saving audio status for conversation ${conversationId}:`,
+        error.message,
+      );
+    }
   }
 }

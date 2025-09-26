@@ -6,6 +6,7 @@ import { AuthModule } from './auth/auth.module';
 import { GenericsModule } from './modules/generics/generics.module';
 import { AgentsModule } from './modules/agents/agents.module';
 import { ConversationsModule } from './modules/conversations/conversations.module';
+import { WebhooksModule } from './modules/webhooks/webhooks.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { ConversationsModule } from './modules/conversations/conversations.modul
     GenericsModule,
     AgentsModule,
     ConversationsModule,
+    WebhooksModule,
   ],
   controllers: [],
   providers: [],
