@@ -7,6 +7,7 @@ import { GenericsModule } from './modules/generics/generics.module';
 import { AgentsModule } from './modules/agents/agents.module';
 import { ConversationsModule } from './modules/conversations/conversations.module';
 import { WebhooksModule } from './modules/webhooks/webhooks.module';
+import { BachcallsModule } from './modules/bachcalls/bachcalls.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { WebhooksModule } from './modules/webhooks/webhooks.module';
     AgentsModule,
     ConversationsModule,
     WebhooksModule,
+    BachcallsModule,
   ],
   controllers: [],
   providers: [],
