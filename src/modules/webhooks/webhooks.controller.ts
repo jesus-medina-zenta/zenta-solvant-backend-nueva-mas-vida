@@ -7,9 +7,17 @@ import {
   Logger,
   Req,
 } from '@nestjs/common';
+import {
+  ApiOperation,
+  ApiResponse,
+  ApiHeader,
+  ApiBody,
+  ApiTags,
+} from '@nestjs/swagger';
 import { WebhooksService } from './webhooks.service';
 import { WebhookResponseDto } from './dto/webhook-response.dto';
 
+@ApiTags('webhooks')
 @Controller('webhooks')
 export class WebhooksController {
   private readonly logger = new Logger(WebhooksController.name);
@@ -17,6 +25,44 @@ export class WebhooksController {
   constructor(private readonly webhooksService: WebhooksService) {}
 
   @Post()
+  @ApiOperation({
+    summary: 'Process ElevenLabs webhook',
+    description:
+      'Processes ElevenLabs post-call transcription webhooks and saves conversation data',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Webhook processed successfully',
+    type: WebhookResponseDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request - Invalid payload structure.',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized - Invalid webhook signature.',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - Insufficient permissions.',
+  })
+  @ApiResponse({
+    status: 500,
+    description: 'Internal Server Error - Processing failed.',
+  })
+  @ApiHeader({
+    name: 'elevenlabs-signature',
+    required: false,
+    description: 'ElevenLabs webhook signature for validation',
+    example: 't=1234567890,v0=abcdef123456...',
+  })
+  @ApiHeader({
+    name: 'user-agent',
+    required: false,
+    description: 'User agent header, should contain "ElevenLabs"',
+    example: 'ElevenLabs-Webhook/1.0',
+  })
   async receiveWebhook(
     @Req() req: any,
     @Headers('elevenlabs-signature') signature?: string,

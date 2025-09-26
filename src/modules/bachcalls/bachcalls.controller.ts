@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query, UsePipes } from '@nestjs/common';
+import { Controller, Get, Param, Post, Query, UsePipes } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiQuery, ApiResponse } from '@nestjs/swagger';
 import { BachcallsService } from './bachcalls.service';
 import { SecurityValidationPipe } from 'src/shared/pipes/validations/security-validation.pipe';
@@ -58,5 +58,25 @@ export class BachcallsController {
     @Param('id') id: string,
   ): Promise<DetailedBatchCallDto> {
     return this.bachcallsService.getBachcallById(id);
+  }
+
+  @Post(':id/cancel')
+  @ApiOperation({ summary: 'Cancel a batch call by ID' })
+  @ApiResponse({
+    status: 204,
+    description: 'Batch call canceled successfully.',
+  })
+  @ApiResponse({ status: 400, description: 'Bad Request.' })
+  @ApiResponse({ status: 403, description: 'Forbidden.' })
+  @ApiResponse({ status: 404, description: 'Batch call not found.' })
+  @ApiParam({
+    name: 'id',
+    type: String,
+    description: 'The unique identifier of the batch call to cancel.',
+    example: 'btcal_6801k59m1t31e8xt43nscbtxfakf',
+  })
+  @UsePipes(new SecurityValidationPipe())
+  async cancelBachcall(@Param('id') id: string): Promise<void> {
+    return this.bachcallsService.cancelBachcall(id);
   }
 }

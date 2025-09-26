@@ -143,13 +143,11 @@ export class ConversationsController {
   ): Promise<void> {
     const audioBuffer =
       await this.conversationsService.getConversationAudio(conversationId);
-
-    // Configurar los encabezados HTTP para el archivo de audio
     res.set({
-      'Content-Type': 'audio/mpeg', // Asegúrate de que el tipo sea correcto
-      'Content-Disposition': `inline; filename="${conversationId}.mp3"`, // Cambia a "inline" para reproducir en lugar de descargar
+      'Content-Type': 'audio/mpeg',
+      'Content-Disposition': `inline; filename="${conversationId}.mp3"`,
     });
 
-    res.send(audioBuffer); // Envía el audio al cliente
+    res.send(audioBuffer);
   }
 }

@@ -76,4 +76,11 @@ export class BachcallsService {
 
     return detailedBachcall;
   }
+
+  cancelBachcall(bachCallId: string): Promise<void> {
+    return this.externalApiService.post(
+      `/convai/batch-calling/${bachCallId}/cancel`,
+      {},
+    );
+  }
 }
