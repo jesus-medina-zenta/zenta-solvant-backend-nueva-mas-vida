@@ -71,7 +71,6 @@ export class ExcelCsvProcessor {
         defval: null,
       });
 
-      // Convert array of arrays to array of objects with headers
       if (data.length === 0) {
         throw new Error('Excel file is empty');
       }
@@ -79,13 +78,25 @@ export class ExcelCsvProcessor {
       const headers = data[0] as string[];
       const rows = data.slice(1);
 
-      return rows.map((row) => {
-        const obj: any = {};
-        headers.forEach((header, index) => {
-          obj[header] = row[index] || null;
+      return rows
+        .filter(
+          (row) =>
+            Array.isArray(row) &&
+            row.some(
+              (cell) =>
+                cell !== null &&
+                cell !== undefined &&
+                cell !== '' &&
+                String(cell).trim() !== '',
+            ),
+        )
+        .map((row) => {
+          const obj: any = {};
+          headers.forEach((header, index) => {
+            obj[header] = row[index] || null;
+          });
+          return obj;
         });
-        return obj;
-      });
     } catch (error) {
       this.logger.error('Error parsing Excel file:', error);
       throw new Error(`Failed to parse Excel file: ${error.message}`);
@@ -102,7 +113,16 @@ export class ExcelCsvProcessor {
 
       stream
         .pipe(csv())
-        .on('data', (data) => results.push(data))
+        .on('data', (data) => {
+          const hasData = Object.values(data).some(
+            (value) =>
+              value !== null &&
+              value !== undefined &&
+              value !== '' &&
+              String(value).trim() !== '',
+          );
+          if (hasData) results.push(data);
+        })
         .on('end', () => {
           if (results.length === 0) {
             reject(new Error('CSV file is empty'));

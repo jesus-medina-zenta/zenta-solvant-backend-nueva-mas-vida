@@ -1,9 +1,9 @@
 export class RegistroArchivo {
   id?: string;
-  uuid: string;
+  id_carga: string;
   agent_id: string;
-  phone_id: string;
-  batch_name: string;
+  phone_idagent_phone_number_id: string;
+  call_name: string;
   file_name: string;
   file_path: string;
   file_size: number;

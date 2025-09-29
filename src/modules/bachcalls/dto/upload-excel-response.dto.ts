@@ -2,7 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 
 export class UploadExcelResponseDto {
   @ApiProperty({ description: 'Unique identifier for the uploaded file' })
-  uuid: string;
+  id_carga: string;
 
   @ApiProperty({ description: 'Success message with processing details' })
   message: string;
