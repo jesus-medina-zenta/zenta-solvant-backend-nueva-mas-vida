@@ -39,6 +39,8 @@ steps:
       - '--set-env-vars=EXTERNAL_API_BASE_URL=${_EXTERNAL_API_BASE_URL}'
       - '--set-env-vars=GOOGLE_CLIENT_ID=${_GOOGLE_CLIENT_ID}'
       - '--set-env-vars=GCP_FIRESTORE_DATABASE_ID=${_GCP_FIRESTORE_DATABASE_ID}'
+      - '--set-env-vars=GCP_AUDIO_BUCKET_NAME=${_GCP_AUDIO_BUCKET_NAME}'
+      - '--set-env-vars=GCP_CSV_BUCKET_NAME=${_GCP_CSV_BUCKET_NAME}'
       - '--platform'
       - 'managed'
       - '--no-allow-unauthenticated'
