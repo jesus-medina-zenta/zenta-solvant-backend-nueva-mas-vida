@@ -4,6 +4,7 @@ import { FirestoreRepository } from './firestore.repository';
 import { User } from 'src/shared/entities/user.entity';
 import { CsrfToken } from 'src/shared/entities/csrf-token.entity';
 import { AudiosStatus } from 'src/shared/entities/audios-status.entity';
+import { RegistroArchivo } from 'src/shared/entities/registro-archivo.entity';
 
 @Module({
   imports: [ConfigModule],
@@ -53,6 +54,15 @@ import { AudiosStatus } from 'src/shared/entities/audios-status.entity';
       },
       inject: [ConfigService],
     },
+    {
+      provide: 'REGISTRO_ARCHIVOS_REPOSITORY',
+      useFactory: (configService: ConfigService) => {
+        return new FirestoreRepository<RegistroArchivo>(configService, {
+          collectionName: 'registro_archivos',
+        });
+      },
+      inject: [ConfigService],
+    },
   ],
   exports: [
     'USER_REPOSITORY',
@@ -60,6 +70,7 @@ import { AudiosStatus } from 'src/shared/entities/audios-status.entity';
     'CSRF_TOKEN_REPOSITORY',
     'REGISTROS_LLAMADAS_REPOSITORY',
     'AUDIOS_STATUS_REPOSITORY',
+    'REGISTRO_ARCHIVOS_REPOSITORY',
   ],
 })
 export class DatabaseModule {}

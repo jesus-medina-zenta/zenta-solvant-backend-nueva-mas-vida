@@ -9,6 +9,7 @@ export const configuration = () => ({
   gcpFirestoreDatabaseId: process.env.GCP_FIRESTORE_DATABASE_ID,
   gcpServiceAccountEmail: process.env.GCP_SERVICE_ACCOUNT_EMAIL,
   gcpAudioBucketName: process.env.GCP_AUDIO_BUCKET_NAME,
+  gcpCsvBucketName: process.env.GCP_CSV_BUCKET_NAME,
   //Axios
   externalApiBaseUrl: process.env.EXTERNAL_API_BASE_URL,
   externalApiSecurityType: process.env.EXTERNAL_API_SECURITY_TYPE,

@@ -16,6 +16,7 @@ export function validate(config: Record<string, any>) {
     EXTERNAL_API_KEY: Joi.string().allow('').optional(),
     EXTERNAL_API_TOKEN: Joi.string().allow('').optional(),
     ELEVENLABS_WEBHOOK_SECRET: Joi.string().optional(),
+    GCP_CSV_BUCKET_NAME: Joi.string().required(),
   });
 
   const { error, value } = schema.validate(config, { allowUnknown: true });
