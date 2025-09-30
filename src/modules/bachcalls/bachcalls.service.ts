@@ -172,7 +172,7 @@ export class BachcallsService {
       const registroArchivo: RegistroArchivo = {
         id_carga: uuid,
         agent_id: uploadExcelDto.agent_id,
-        phone_idagent_phone_number_id: uploadExcelDto.phone_id,
+        agent_phone_number_id: uploadExcelDto.phone_id,
         call_name: uploadExcelDto.batch_name,
         file_name: fileName,
         file_path: filePath,
@@ -195,8 +195,7 @@ export class BachcallsService {
         const pipelineData = {
           id_carga: registroArchivo.id_carga,
           agent_id: registroArchivo.agent_id,
-          phone_idagent_phone_number_id:
-            registroArchivo.phone_idagent_phone_number_id,
+          agent_phone_number_id: registroArchivo.agent_phone_number_id,
           call_name: registroArchivo.call_name,
           file_path: registroArchivo.file_path,
         };

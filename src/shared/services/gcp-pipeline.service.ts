@@ -2,6 +2,7 @@ import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GoogleAuth } from 'google-auth-library';
 import { IPipelineService } from '../interfaces/i-pipeline-service.interface';
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class GcpPipelineService implements IPipelineService {
@@ -114,7 +115,7 @@ export class GcpPipelineService implements IPipelineService {
           Authorization: `Bearer ${accessTokenResponse.token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(requestBody),
+        body: payload ? JSON.stringify(requestBody) : undefined,
       });
 
       // Better error handling - check content type before parsing
@@ -159,7 +160,7 @@ export class GcpPipelineService implements IPipelineService {
 
   private generateExecutionId(pipelineName: string): string {
     const timestamp = Date.now();
-    const random = Math.random().toString(36).substring(7);
-    return `${pipelineName}-${timestamp}-${random}`;
+    const uuid = uuidv4();
+    return `${pipelineName}-${timestamp}-${uuid}`;
   }
 }
