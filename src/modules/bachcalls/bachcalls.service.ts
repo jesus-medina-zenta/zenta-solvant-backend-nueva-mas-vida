@@ -192,17 +192,9 @@ export class BachcallsService {
 
       // Disparar pipeline después de guardar el registro exitosamente
       try {
-        const pipelineData = {
-          id_carga: registroArchivo.id_carga,
-          agent_id: registroArchivo.agent_id,
-          agent_phone_number_id: registroArchivo.agent_phone_number_id,
-          call_name: registroArchivo.call_name,
-          file_path: registroArchivo.file_path,
-        };
-
         await this.pipelineService.triggerPipelineAfterAction(
           'file_uploaded',
-          pipelineData,
+          registroArchivo.id_carga,
         );
 
         this.logger.log(

@@ -1,6 +1,7 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GoogleAuth } from 'google-auth-library';
+import { JobsClient } from '@google-cloud/run';
 import { IPipelineService } from '../interfaces/i-pipeline-service.interface';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -11,6 +12,7 @@ export class GcpPipelineService implements IPipelineService {
   private readonly region: string;
   private readonly pipelineName: string;
   private readonly auth: GoogleAuth;
+  private readonly jobsClient: JobsClient;
 
   constructor(private readonly configService: ConfigService) {
     this.projectId =
@@ -20,10 +22,12 @@ export class GcpPipelineService implements IPipelineService {
       this.configService.get<string>('gcpPipelineName') ||
       'zenta-solvant-pipe-reading-csv-dev';
 
-    // Configure impersonation with proper scopes
     this.auth = new GoogleAuth({
       scopes: ['https://www.googleapis.com/auth/cloud-platform'],
-      // Use environment variables for impersonation
+      projectId: this.projectId,
+    });
+
+    this.jobsClient = new JobsClient({
       projectId: this.projectId,
     });
 
@@ -32,33 +36,16 @@ export class GcpPipelineService implements IPipelineService {
     );
   }
 
-  /**
-   * Convenience method to trigger pipeline after a specific action
-   */
   async triggerPipelineAfterAction(
     action: string,
-    actionData: any,
+    id_carga: string,
     pipelineName?: string,
   ): Promise<any> {
     try {
-      // Use configured pipeline name or provided one
       const jobName = pipelineName || this.pipelineName;
 
-      // Generate unique execution ID
       const executionId = this.generateExecutionId(jobName);
-
-      const pipelineData = {
-        executionId,
-        action,
-        actionData,
-        triggeredAt: new Date().toISOString(),
-        source: 'zenta-solvant-backend',
-        projectId: this.projectId,
-        region: this.region,
-      };
-
-      // Execute the Cloud Run Job
-      const response = await this.executeCloudRunJob(jobName, pipelineData);
+      const response = await this.executeCloudRunJob(jobName, id_carga);
 
       this.logger.log(`Pipeline triggered successfully for action: ${action}`);
 
@@ -67,85 +54,60 @@ export class GcpPipelineService implements IPipelineService {
         jobName,
         status: 'SUBMITTED',
         startTime: new Date().toISOString(),
-        message: `Cloud Run Job ${jobName} submitted successfully`,
+        message: `Cloud Run Job ${jobName} submitted successfully with id_carga: ${id_carga}`,
         action,
+        id_carga,
         response,
       };
     } catch (error) {
       this.logger.error(
-        `Error triggering Cloud Run Job for action ${action}:`,
+        `Error triggering Cloud Run Job for action ${action} with id_carga ${id_carga}:`,
         error,
       );
       throw new BadRequestException({
-        message: `Failed to trigger Cloud Run Job for action: ${action}`,
+        message: `Failed to trigger Cloud Run Job for action: ${action} with id_carga: ${id_carga}`,
         error: 'CLOUD_RUN_JOB_TRIGGER_ERROR',
         details: error.message,
       });
     }
   }
 
-  /**
-   * Execute Cloud Run Job with OAuth authentication
-   */
   private async executeCloudRunJob(
     jobName: string,
-    payload: any,
+    id_carga: string,
   ): Promise<any> {
     try {
-      // Get authentication client with impersonation
-      const authClient = await this.auth.getClient();
-      const accessTokenResponse = await authClient.getAccessToken();
+      const name = `projects/${this.projectId}/locations/${this.region}/jobs/${jobName}`;
 
-      if (!accessTokenResponse.token) {
-        throw new Error(
-          'Failed to obtain access token from impersonated service account',
-        );
-      }
+      const overrides = {
+        containerOverrides: [
+          {
+            args: ['--id_carga', id_carga],
+          },
+        ],
+      };
 
-      // Use the correct Cloud Run Jobs API v2 endpoint
-      const url = `https://run.googleapis.com/v2/projects/${this.projectId}/locations/${this.region}/jobs/${jobName}:run`;
+      const request = {
+        name,
+        overrides,
+      };
 
-      // Use empty request body to avoid runWithOverrides permission
-      const requestBody = {};
+      this.logger.log(
+        `Starting execution of Job: ${jobName} in ${this.region} with id_carga: ${id_carga}...`,
+      );
 
-      // Make authenticated HTTP request
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${accessTokenResponse.token}`,
-          'Content-Type': 'application/json',
-        },
-        body: payload ? JSON.stringify(requestBody) : undefined,
-      });
+      const [operation] = await this.jobsClient.runJob(request);
 
-      // Better error handling - check content type before parsing
-      const contentType = response.headers.get('content-type');
-      let responseData;
-
-      if (contentType && contentType.includes('application/json')) {
-        responseData = await response.json();
-      } else {
-        const responseText = await response.text();
-
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${responseText}`);
-        }
-
-        responseData = { message: responseText };
-      }
-
-      if (!response.ok) {
-        throw new Error(
-          `HTTP ${response.status}: ${responseData?.error?.message || responseData?.message || 'Unknown error'}`,
-        );
-      }
+      this.logger.log('Job execution request sent successfully.');
+      this.logger.log(`Operation name: ${operation.name}`);
 
       return {
         success: true,
-        status: response.status,
-        executionName: responseData?.metadata?.name || 'unknown',
+        operationName: operation.name,
         jobName,
+        id_carga,
         timestamp: new Date().toISOString(),
+        message: `Cloud Run Job ${jobName} submitted successfully with id_carga: ${id_carga}`,
       };
     } catch (error) {
       this.logger.error(`Error executing Cloud Run Job ${jobName}:`, error);
