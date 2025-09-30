@@ -112,6 +112,26 @@ export class FirestoreRepository<T extends { id?: string }>
     }
   }
 
+  public async getAllByField(field: string, value: string): Promise<T[]> {
+    try {
+      const query = this.firestore
+        .collection(this.collectionName)
+        .where(field, '==', value);
+      const snapshot = await query.get();
+
+      const documents: T[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data() as T;
+        data.id = doc.id;
+        documents.push(data);
+      });
+
+      return documents;
+    } catch (error) {
+      this.handleDbError(error, `Field: ${field} = ${value}`);
+    }
+  }
+
   public async getAll(): Promise<T[]> {
     try {
       const query = this.firestore.collection(this.collectionName);

@@ -9,6 +9,11 @@ export function validate(config: Record<string, any>) {
     TOKEN_EXPIRATION: Joi.string().default('1h'),
     GOOGLE_CLIENT_ID: Joi.string().required(),
     GCP_PROJECT_ID: Joi.string().required(),
+    GCP_REGION: Joi.string().default('us-central1'),
+    GCP_PIPELINE_NAME: Joi.string().default(
+      'zenta-solvant-pipe-reading-csv-dev',
+    ),
+    GCP_SERVICE_ACCOUNT_EMAIL: Joi.string().optional(),
     GCP_FIRESTORE_DATABASE_ID: Joi.string().allow('').optional(),
     GCP_AUDIO_BUCKET_NAME: Joi.string().required(),
     EXTERNAL_API_BASE_URL: Joi.string().required(),
@@ -16,6 +21,7 @@ export function validate(config: Record<string, any>) {
     EXTERNAL_API_KEY: Joi.string().allow('').optional(),
     EXTERNAL_API_TOKEN: Joi.string().allow('').optional(),
     ELEVENLABS_WEBHOOK_SECRET: Joi.string().optional(),
+    GCP_CSV_BUCKET_NAME: Joi.string().required(),
   });
 
   const { error, value } = schema.validate(config, { allowUnknown: true });

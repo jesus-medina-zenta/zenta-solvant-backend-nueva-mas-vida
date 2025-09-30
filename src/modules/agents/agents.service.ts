@@ -2,6 +2,8 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { IIntegrationService } from 'src/shared/interfaces/i-integration-service.interface';
 import { ListAgentsDto } from './dto/list-agents.dto';
 import { ListAgentsResponseDto } from './dto/list-agents-response.dto';
+import { ListPhoneNumbersResponseDto } from './dto/list-phone-numbers-response.dto';
+import { PhoneNumberDto } from './dto/phone-number.dto';
 
 @Injectable()
 export class AgentsService {
@@ -48,6 +50,39 @@ export class AgentsService {
       agents,
       hasMore: response.has_more,
       nextCursor: response.next_cursor,
+    };
+  }
+
+  async listPhoneNumbers(): Promise<ListPhoneNumbersResponseDto> {
+    const response = await this.externalApiService.get('/convai/phone-numbers');
+
+    // Manejar diferentes posibles estructuras de respuesta
+    let phoneNumbersData = response.phone_numbers || response || [];
+
+    // Si response es un array directamente
+    if (Array.isArray(response)) {
+      phoneNumbersData = response;
+    }
+
+    const phoneNumbers: PhoneNumberDto[] = Array.isArray(phoneNumbersData)
+      ? phoneNumbersData.map((phoneNumber: any) => ({
+          phone_number: phoneNumber.phone_number,
+          label: phoneNumber.label,
+          supports_inbound: phoneNumber.supports_inbound,
+          supports_outbound: phoneNumber.supports_outbound,
+          phone_number_id: phoneNumber.phone_number_id,
+          assigned_agent: {
+            agent_id: phoneNumber.assigned_agent?.agent_id,
+            agent_name: phoneNumber.assigned_agent?.agent_name,
+          },
+          provider: phoneNumber.provider,
+        }))
+      : [];
+
+    this.logger.log(`Retrieved ${phoneNumbers.length} phone numbers`);
+
+    return {
+      phone_numbers: phoneNumbers,
     };
   }
 }

@@ -1,9 +1,31 @@
-import { Controller, Get, Param, Post, Query, UsePipes } from '@nestjs/common';
-import { ApiOperation, ApiParam, ApiQuery, ApiResponse } from '@nestjs/swagger';
+import {
+  Controller,
+  Get,
+  Param,
+  Post,
+  Query,
+  UsePipes,
+  UploadedFile,
+  UseInterceptors,
+  Body,
+} from '@nestjs/common';
+import {
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiResponse,
+  ApiConsumes,
+  ApiBody,
+} from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { BachcallsService } from './bachcalls.service';
 import { SecurityValidationPipe } from 'src/shared/pipes/validations/security-validation.pipe';
 import { ListBachcallsResponseDto } from './dto/list-bachcalls-response.dto';
 import { DetailedBatchCallDto } from './dto/detailed-batch-call.dto';
+import { UploadExcelDto } from './dto/upload-excel.dto';
+import { UploadExcelResponseDto } from './dto/upload-excel-response.dto';
+import { ValidationErrorDto } from './dto/validation-error.dto';
+import { PrepareBatchCallingDto } from './dto/prepare-batch-calling.dto';
 
 @Controller('bachcalls')
 export class BachcallsController {
@@ -58,6 +80,91 @@ export class BachcallsController {
     @Param('id') id: string,
   ): Promise<DetailedBatchCallDto> {
     return this.bachcallsService.getBachcallById(id);
+  }
+
+  @Post('upload-excel')
+  @ApiOperation({ summary: 'Upload Excel file for batch calling' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    description: 'Excel file and batch call information',
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+          description: 'Excel file to upload',
+        },
+        agent_id: {
+          type: 'string',
+          description: 'ID of the agent',
+        },
+        phone_id: {
+          type: 'string',
+          description: 'ID of the phone',
+        },
+        batch_name: {
+          type: 'string',
+          description: 'Name of the batch calling',
+        },
+      },
+      required: ['file', 'agent_id', 'phone_id', 'batch_name'],
+    },
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Excel file uploaded and processed successfully.',
+    type: UploadExcelResponseDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request - File validation failed.',
+    type: ValidationErrorDto,
+  })
+  @ApiResponse({ status: 403, description: 'Forbidden.' })
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadExcel(
+    @UploadedFile() file: any,
+    @Body() uploadExcelDto: UploadExcelDto,
+  ): Promise<UploadExcelResponseDto> {
+    return await this.bachcallsService.uploadExcel(file, uploadExcelDto);
+  }
+
+  @Post('send-batch-calling')
+  @ApiOperation({ summary: 'Send batch calling to ElevenLabs' })
+  @ApiBody({
+    description: 'Batch calling information to prepare and send',
+    type: PrepareBatchCallingDto,
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Batch calling sent successfully.',
+    schema: {
+      type: 'object',
+      properties: {
+        id: {
+          type: 'string',
+          description: 'ID of the created batch calling',
+        },
+        message: {
+          type: 'string',
+          description: 'Success message',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request - Validation failed or no records found.',
+  })
+  @ApiResponse({ status: 403, description: 'Forbidden.' })
+  @UsePipes(new SecurityValidationPipe())
+  async sendBatchCalling(
+    @Body() prepareBatchCallingDto: PrepareBatchCallingDto,
+  ): Promise<any> {
+    return await this.bachcallsService.enviarBatchCalling(
+      prepareBatchCallingDto,
+    );
   }
 
   @Post(':id/cancel')
