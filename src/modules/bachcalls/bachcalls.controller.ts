@@ -25,6 +25,7 @@ import { DetailedBatchCallDto } from './dto/detailed-batch-call.dto';
 import { UploadExcelDto } from './dto/upload-excel.dto';
 import { UploadExcelResponseDto } from './dto/upload-excel-response.dto';
 import { ValidationErrorDto } from './dto/validation-error.dto';
+import { PrepareBatchCallingDto } from './dto/prepare-batch-calling.dto';
 
 @Controller('bachcalls')
 export class BachcallsController {
@@ -127,6 +128,43 @@ export class BachcallsController {
     @Body() uploadExcelDto: UploadExcelDto,
   ): Promise<UploadExcelResponseDto> {
     return await this.bachcallsService.uploadExcel(file, uploadExcelDto);
+  }
+
+  @Post('send-batch-calling')
+  @ApiOperation({ summary: 'Send batch calling to ElevenLabs' })
+  @ApiBody({
+    description: 'Batch calling information to prepare and send',
+    type: PrepareBatchCallingDto,
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Batch calling sent successfully.',
+    schema: {
+      type: 'object',
+      properties: {
+        id: {
+          type: 'string',
+          description: 'ID of the created batch calling',
+        },
+        message: {
+          type: 'string',
+          description: 'Success message',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request - Validation failed or no records found.',
+  })
+  @ApiResponse({ status: 403, description: 'Forbidden.' })
+  @UsePipes(new SecurityValidationPipe())
+  async sendBatchCalling(
+    @Body() prepareBatchCallingDto: PrepareBatchCallingDto,
+  ): Promise<any> {
+    return await this.bachcallsService.enviarBatchCalling(
+      prepareBatchCallingDto,
+    );
   }
 
   @Post(':id/cancel')

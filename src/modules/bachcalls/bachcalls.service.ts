@@ -21,6 +21,7 @@ import {
 import { BuscarRegistrosSftpResponseDto } from './dto/buscar-registros-sftp-response.dto';
 import { PrepareBatchCallingDto } from './dto/prepare-batch-calling.dto';
 import { BatchCallingRequestDto } from './dto/batch-calling-request.dto';
+import { GcpPipelineService } from 'src/shared/services/gcp-pipeline.service';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
@@ -36,6 +37,7 @@ export class BachcallsService {
     private readonly registroArchivosRepository: IDatabaseService<RegistroArchivo>,
     @Inject('REGISTROS_SFTP_REPOSITORY')
     private readonly registrosSftpRepository: IDatabaseService<RegistroSftp>,
+    private readonly pipelineService: GcpPipelineService,
     private readonly excelCsvProcessor: ExcelCsvProcessor,
   ) {}
 
@@ -188,6 +190,32 @@ export class BachcallsService {
         `File processed and uploaded successfully: ${fileName}, UUID: ${uuid}, Rows: ${validationResult.data?.length || 0}`,
       );
 
+      // Disparar pipeline después de guardar el registro exitosamente
+      try {
+        const pipelineData = {
+          id_carga: registroArchivo.id_carga,
+          agent_id: registroArchivo.agent_id,
+          phone_idagent_phone_number_id:
+            registroArchivo.phone_idagent_phone_number_id,
+          call_name: registroArchivo.call_name,
+          file_path: registroArchivo.file_path,
+        };
+
+        await this.pipelineService.triggerPipelineAfterAction(
+          'file_uploaded',
+          pipelineData,
+        );
+
+        this.logger.log(
+          `Pipeline triggered successfully for file upload: ${fileName}`,
+        );
+      } catch (pipelineError) {
+        // Log pipeline error but don't fail the main operation
+        this.logger.warn(
+          `Failed to trigger pipeline after file upload: ${pipelineError.message}`,
+        );
+      }
+
       return {
         id_carga: uuid,
         message: `File processed and uploaded successfully. ${validationResult.data?.length || 0} rows validated.`,
@@ -329,6 +357,43 @@ export class BachcallsService {
       throw new BadRequestException({
         message: `Error preparing batch calling for carga ID: ${prepareDto.carga_id}`,
         error: 'BATCH_CALLING_PREPARATION_ERROR',
+        details: error.message,
+      });
+    }
+  }
+
+  async enviarBatchCalling(prepareDto: PrepareBatchCallingDto): Promise<any> {
+    try {
+      this.logger.log(
+        `Starting batch calling process for carga ID: ${prepareDto.carga_id}`,
+      );
+
+      // Primero preparar la información del batch calling
+      const batchCallingRequest = await this.prepararBatchCalling(prepareDto);
+
+      this.logger.log(
+        `Sending batch calling request: ${batchCallingRequest.call_name}`,
+      );
+
+      // Después enviar la solicitud preparada
+      const response = await this.externalApiService.post(
+        '/convai/batch-calling/submit',
+        batchCallingRequest,
+      );
+
+      this.logger.log(
+        `Batch calling submitted successfully: ${batchCallingRequest.call_name}`,
+      );
+
+      return response;
+    } catch (error) {
+      this.logger.error(
+        `Error in batch calling process for carga ID ${prepareDto.carga_id}:`,
+        error,
+      );
+      throw new BadRequestException({
+        message: `Error processing batch calling for carga ID: ${prepareDto.carga_id}`,
+        error: 'BATCH_CALLING_SUBMIT_ERROR',
         details: error.message,
       });
     }

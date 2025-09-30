@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx';
+import * as ExcelJS from 'exceljs';
 import * as csv from 'csv-parser';
 import { createObjectCsvWriter } from 'csv-writer';
 import { Readable } from 'stream';
@@ -54,28 +54,40 @@ export class ExcelCsvProcessor {
   }
 
   /**
-   * Parse Excel file to data array
+   * Parse Excel file to data array using ExcelJS (more secure than xlsx)
    */
   private async parseExcel(fileBuffer: Buffer): Promise<any[]> {
     try {
-      const workbook = XLSX.read(fileBuffer, { type: 'buffer' });
-      const sheetName = workbook.SheetNames[0];
+      const workbook = new ExcelJS.Workbook();
+      // Create a stream from buffer for ExcelJS
+      const stream = Readable.from(fileBuffer);
+      await workbook.xlsx.read(stream);
 
-      if (!sheetName) {
+      const worksheet = workbook.getWorksheet(1);
+      if (!worksheet) {
         throw new Error('Excel file must contain at least one sheet');
       }
 
-      const worksheet = workbook.Sheets[sheetName];
-      const data = XLSX.utils.sheet_to_json(worksheet, {
-        header: 1,
-        defval: null,
+      const data: any[][] = [];
+      let headers: string[] = [];
+
+      worksheet.eachRow((row, rowNumber) => {
+        const rowValues = row.values as any[];
+        // Remove first element (it's always undefined in ExcelJS)
+        const cleanedRow = rowValues.slice(1);
+
+        if (rowNumber === 1) {
+          headers = cleanedRow.map((cell) => cell?.toString() || '');
+          data.push(headers);
+        } else {
+          data.push(cleanedRow.map((cell) => cell || null));
+        }
       });
 
       if (data.length === 0) {
         throw new Error('Excel file is empty');
       }
 
-      const headers = data[0] as string[];
       const rows = data.slice(1);
 
       return rows
