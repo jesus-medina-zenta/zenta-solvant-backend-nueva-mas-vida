@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@google-cloud/firestore": "^7.11.0",
+    "@google-cloud/run": "^3.0.0",
     "@google-cloud/storage": "^7.17.1",
     "@nestjs/common": "^11.0.16",
     "@nestjs/config": "^4.0.0",
