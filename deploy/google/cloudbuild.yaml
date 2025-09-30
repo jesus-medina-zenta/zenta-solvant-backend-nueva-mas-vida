@@ -1,16 +1,4 @@
 steps:
-  - id: 'Unshallow clone'
-    name: gcr.io/cloud-builders/git
-    args: ['fetch', '--unshallow']
-
-  - id: 'Sonar'
-    name: 'sonarsource/sonar-scanner-cli:5.0'
-    entrypoint: 'sonar-scanner'
-    args:
-      - '-Dsonar.host.url=${_SONAR_URL}'
-      - '-Dsonar.login=${_SONAR_TOKEN}'
-      - '-Dsonar.projectKey=${_COMPONENT_NAME}'
-
   - id: 'Build docker image'
     name: 'gcr.io/cloud-builders/docker'
     args:
@@ -55,7 +43,7 @@ steps:
       - '--set-env-vars=GCP_CSV_BUCKET_NAME=${_GCP_CSV_BUCKET_NAME}'
       - '--platform'
       - 'managed'
-      - '--allow-unauthenticated'
+      - '--no-allow-unauthenticated'
       - '--port'
       - '3000'
 
