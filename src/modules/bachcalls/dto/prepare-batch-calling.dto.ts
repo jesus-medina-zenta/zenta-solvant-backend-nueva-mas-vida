@@ -18,14 +18,6 @@ export class PrepareBatchCallingDto {
   agent_phone_number_id: string;
 
   @ApiProperty({
-    description: 'Nombre del agente para variables dinámicas',
-    example: 'Javier',
-  })
-  @IsNotEmpty()
-  @IsString()
-  agent_name: string;
-
-  @ApiProperty({
     description: 'Nombre de la campaña de llamadas',
     example: 'Cobro atrasado Septiembre',
   })

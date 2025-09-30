@@ -306,7 +306,6 @@ export class BachcallsService {
             conversation_initiation_client_data: {
               type: 'conversation_initiation_client_data',
               dynamic_variables: {
-                agent_name: prepareDto.agent_name,
                 ...metadata, // Cargar toda la metadata tal cual sin procesamiento
               },
             },
