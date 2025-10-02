@@ -14,10 +14,7 @@ import { ICsvStorageService } from 'src/shared/interfaces/i-csv-storage-service.
 import { IDatabaseService } from 'src/shared/interfaces/i-database-service.interface';
 import { RegistroArchivo } from 'src/shared/entities/registro-archivo.entity';
 import { RegistroSftp } from 'src/shared/entities/registro-sftp.entity';
-import {
-  ExcelCsvProcessor,
-  ValidationResult,
-} from 'src/shared/services/excel-csv-processor.service';
+import { ExcelCsvProcessor } from 'src/shared/services/excel-csv-processor.service';
 import { BuscarRegistrosSftpResponseDto } from './dto/buscar-registros-sftp-response.dto';
 import { PrepareBatchCallingDto } from './dto/prepare-batch-calling.dto';
 import { BatchCallingRequestDto } from './dto/batch-calling-request.dto';
@@ -246,7 +243,7 @@ export class BachcallsService {
       const registrosResponse = registros.map((registro) => ({
         id: registro.id,
         fecha: registro.fecha,
-        track_id: registro.track_id || null,
+        track_id: registro.track_id ?? null,
         track_status: registro.track_status,
         phone_number: registro.phone_number,
         phone_number_2: registro.phone_number_2,
@@ -290,7 +287,7 @@ export class BachcallsService {
       }
 
       const scheduledTime =
-        prepareDto.scheduled_time_unix || Math.floor(Date.now() / 1000);
+        prepareDto.scheduled_time_unix ?? Math.floor(Date.now() / 1000);
 
       const recipients = sftpData.registros
         .map((registro) => {
@@ -309,7 +306,7 @@ export class BachcallsService {
               type: 'conversation_initiation_client_data',
               dynamic_variables: {
                 ...metadata, // Cargar toda la metadata tal cual sin procesamiento
-                track_id: registro.track_id || null, // Agregar track_id como variable dinámica, null si no existe
+                track_id: registro.track_id ?? null, // Agregar track_id como variable dinámica, null si no existe
               },
             },
           };

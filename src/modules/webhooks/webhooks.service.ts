@@ -116,9 +116,9 @@ export class WebhooksService {
     const dynamicVariables =
       this.cleanUndefinedValues(
         data.conversation_initiation_client_data?.dynamic_variables,
-      ) || {};
+      ) ?? {};
 
-    const trackId = dynamicVariables.track_id || null;
+    const trackId = dynamicVariables.track_id ?? null;
 
     this.logger.log('Extracted track_id from dynamic variables', {
       conversationId: data.conversation_id,
@@ -132,18 +132,18 @@ export class WebhooksService {
       agent_id: data.agent_id,
       status: data.status,
 
-      call_duration_secs: data.metadata?.call_duration_secs || 0,
-      llm_usage: this.cleanUndefinedValues(data.metadata?.llm_usage) || null,
-      llm_price: data.metadata?.llm_price || 0,
-      llm_charge: data.metadata?.llm_charge || 0,
-      call_charge: data.metadata?.call_charge || 0,
-      termination_reason: data.metadata?.termination_reason || 'unknown',
-      main_language: data.metadata?.main_language || 'es',
-      multivoice: this.cleanUndefinedValues(data.metadata?.multivoice) || {
+      call_duration_secs: data.metadata?.call_duration_secs ?? 0,
+      llm_usage: this.cleanUndefinedValues(data.metadata?.llm_usage) ?? null,
+      llm_price: data.metadata?.llm_price ?? 0,
+      llm_charge: data.metadata?.llm_charge ?? 0,
+      call_charge: data.metadata?.call_charge ?? 0,
+      termination_reason: data.metadata?.termination_reason ?? 'unknown',
+      main_language: data.metadata?.main_language ?? 'es',
+      multivoice: this.cleanUndefinedValues(data.metadata?.multivoice) ?? {
         enabled: false,
         used: false,
       },
-      batch_call: this.cleanUndefinedValues(data.metadata?.batch_call) || {
+      batch_call: this.cleanUndefinedValues(data.metadata?.batch_call) ?? {
         batch_call_id: null,
         batch_call_recipient_id: null,
       },
@@ -151,7 +151,7 @@ export class WebhooksService {
       track_id: trackId,
       dynamic_variables: dynamicVariables,
 
-      analysis: this.cleanUndefinedValues(data.analysis) || {},
+      analysis: this.cleanUndefinedValues(data.analysis) ?? {},
 
       processed_at: new Date().toISOString(),
       event_timestamp: webhookData.event_timestamp,
@@ -161,7 +161,6 @@ export class WebhooksService {
 
     await this.processAudioAsync(data.conversation_id);
 
-    // Actualizar track_status en registro SFTP si existe track_id
     if (trackId) {
       await this.updateTrackStatus(trackId, 'registered_call');
     }
@@ -309,7 +308,6 @@ export class WebhooksService {
         newStatus,
         error: error.message,
       });
-      // No lanzamos el error para no afectar el procesamiento principal del webhook
     }
   }
 }
