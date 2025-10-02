@@ -8,6 +8,7 @@ import {
 } from './dto/convai-webhook.dto';
 import { IDatabaseService } from 'src/shared/interfaces/i-database-service.interface';
 import { ConversationsService } from '../conversations/conversations.service';
+import { string } from 'joi';
 
 @Injectable()
 export class WebhooksService {
@@ -136,6 +137,10 @@ export class WebhooksService {
       multivoice: this.cleanUndefinedValues(data.metadata?.multivoice) || {
         enabled: false,
         used: false,
+      },
+      batch_call: this.cleanUndefinedValues(data.metadata?.batch_call) || {
+        batch_call_id: null,
+        batch_call_recipient_id: null,
       },
 
       dynamic_variables:

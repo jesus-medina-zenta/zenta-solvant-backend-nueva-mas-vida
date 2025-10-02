@@ -30,15 +30,19 @@ export interface ConvaiWebhookData {
         enabled: boolean;
         used: boolean;
       };
+      batch_call?: {
+        batch_call_id: string | null;
+        batch_call_recipient_id: string | null;
+      };
     };
-    analysis: Record<string, any>; // Todas las variables que vengan dentro de analysis
+    analysis: Record<string, any>;
     conversation_initiation_client_data: {
       conversation_config_override: {
         tts: {
           voice_id: string | null;
         };
       };
-      dynamic_variables: Record<string, any>; // Todas las variables que vengan dentro de dynamic_variables
+      dynamic_variables: Record<string, any>;
     };
   };
 }
@@ -64,7 +68,7 @@ export interface ProcessedConversationData {
         };
       }
     >;
-  };
+  } | null;
   llm_price: number;
   llm_charge: number;
   call_charge: number;
@@ -74,6 +78,10 @@ export interface ProcessedConversationData {
     enabled: boolean;
     used: boolean;
   };
+  batch_call: {
+    batch_call_id: string | null;
+    batch_call_recipient_id: string | null;
+  } | null;
 
   // Todas las variables dinámicas
   dynamic_variables: Record<string, any>;
