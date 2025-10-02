@@ -246,6 +246,8 @@ export class BachcallsService {
       const registrosResponse = registros.map((registro) => ({
         id: registro.id,
         fecha: registro.fecha,
+        track_id: registro.track_id || null,
+        track_status: registro.track_status,
         phone_number: registro.phone_number,
         phone_number_2: registro.phone_number_2,
         metadata_user: registro.metadata_user,
@@ -307,6 +309,7 @@ export class BachcallsService {
               type: 'conversation_initiation_client_data',
               dynamic_variables: {
                 ...metadata, // Cargar toda la metadata tal cual sin procesamiento
+                track_id: registro.track_id || null, // Agregar track_id como variable dinámica, null si no existe
               },
             },
           };
