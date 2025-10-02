@@ -8,7 +8,6 @@ import {
 } from './dto/convai-webhook.dto';
 import { IDatabaseService } from 'src/shared/interfaces/i-database-service.interface';
 import { ConversationsService } from '../conversations/conversations.service';
-import { string } from 'joi';
 
 @Injectable()
 export class WebhooksService {
