@@ -137,6 +137,10 @@ export class WebhooksService {
         enabled: false,
         used: false,
       },
+      batch_call: this.cleanUndefinedValues(data.metadata?.batch_call) || {
+        batch_call_id: null,
+        batch_call_recipient_id: null,
+      },
 
       dynamic_variables:
         this.cleanUndefinedValues(

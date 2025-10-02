@@ -82,7 +82,7 @@ export class GcpPipelineService implements IPipelineService {
       const overrides = {
         containerOverrides: [
           {
-            args: ['--id_carga', id_carga],
+            args: ['python', '-m', 'src.main', id_carga],
           },
         ],
       };
