@@ -83,6 +83,9 @@ export interface ProcessedConversationData {
     batch_call_recipient_id: string | null;
   } | null;
 
+  // Track ID extraído de las variables dinámicas
+  track_id: string | null;
+
   // Todas las variables dinámicas
   dynamic_variables: Record<string, any>;
 

@@ -11,6 +11,20 @@ export class RegistroSftpResponseDto {
   @ApiProperty({ description: 'Date of the record', example: '16092025' })
   fecha: string;
 
+  @ApiProperty({
+    description: 'Track identifier for the record',
+    example: 'TRK001',
+    nullable: true,
+  })
+  track_id: string | null;
+
+  @ApiProperty({
+    description: 'Status of the track',
+    example: 'pending',
+    required: false,
+  })
+  track_status?: string;
+
   @ApiProperty({ description: 'Primary phone number', example: '+56942278495' })
   phone_number: string;
 
