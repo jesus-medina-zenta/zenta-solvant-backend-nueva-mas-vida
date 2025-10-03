@@ -111,7 +111,9 @@ export class ReportsController {
         await this.reportsService.generateBatchCallExcel(batchCallId);
 
       // Configurar headers para descarga del archivo
-      const fileName = `BatchCall_${batchCallId}_${new Date().toISOString().split('T')[0]}.xlsx`;
+      // Sanitize batchCallId to prevent path traversal and header injection
+      const sanitizedBatchCallId = batchCallId.replace(/[^a-zA-Z0-9_-]/g, '_');
+      const fileName = `BatchCall_${sanitizedBatchCallId}_${new Date().toISOString().split('T')[0]}.xlsx`;
 
       res.set({
         'Content-Type':
