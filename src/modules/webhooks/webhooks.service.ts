@@ -159,7 +159,7 @@ export class WebhooksService {
 
     await this.saveConversationData(processedData);
 
-    await this.processAudioAsync(data.conversation_id);
+    await this.processAudioAsync(data.conversation_id, trackId, data.agent_id);
 
     if (trackId) {
       await this.updateTrackStatus(trackId, 'registered_call');
@@ -191,9 +191,17 @@ export class WebhooksService {
     }
   }
 
-  private async processAudioAsync(conversationId: string): Promise<void> {
+  private async processAudioAsync(
+    conversationId: string,
+    trackId?: string,
+    agentId?: string,
+  ): Promise<void> {
     try {
-      await this.conversationsService.saveConversationAudio(conversationId);
+      await this.conversationsService.saveConversationAudio(
+        conversationId,
+        trackId,
+        agentId,
+      );
       this.logger.log('Audio processed successfully', {
         conversationId,
       });
