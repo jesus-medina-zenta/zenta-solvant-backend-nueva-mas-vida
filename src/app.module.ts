@@ -8,6 +8,7 @@ import { AgentsModule } from './modules/agents/agents.module';
 import { ConversationsModule } from './modules/conversations/conversations.module';
 import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { BachcallsModule } from './modules/bachcalls/bachcalls.module';
+import { ReportsModule } from './modules/reports/reports.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { BachcallsModule } from './modules/bachcalls/bachcalls.module';
     ConversationsModule,
     WebhooksModule,
     BachcallsModule,
+    ReportsModule,
   ],
   controllers: [],
   providers: [],
