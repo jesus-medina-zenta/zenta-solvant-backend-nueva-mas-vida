@@ -114,7 +114,11 @@ export class ConversationsService {
     return audioBuffer;
   }
 
-  async saveConversationAudio(conversationId: string): Promise<string> {
+  async saveConversationAudio(
+    conversationId: string,
+    trackId?: string,
+    agentId?: string,
+  ): Promise<string> {
     try {
       this.logger.log(
         `Starting audio save process for conversation: ${conversationId}`,
@@ -123,7 +127,12 @@ export class ConversationsService {
       const audioBuffer = await this.getConversationAudio(conversationId);
 
       if (!audioBuffer || audioBuffer.length === 0) {
-        await this.saveAudioStatus(conversationId, 'AUDIO_FAILED');
+        await this.saveAudioStatus(
+          conversationId,
+          'AUDIO_FAILED',
+          trackId,
+          agentId,
+        );
         throw new Error(
           `No audio data found for conversation: ${conversationId}`,
         );
@@ -142,11 +151,21 @@ export class ConversationsService {
 
       this.logger.log(`Audio saved successfully to GCS: ${gcsPath}`);
 
-      await this.saveAudioStatus(conversationId, 'AUDIO_SAVED_IN_BUCKET');
+      await this.saveAudioStatus(
+        conversationId,
+        'AUDIO_SAVED_IN_BUCKET',
+        trackId,
+        agentId,
+      );
 
       return gcsPath;
     } catch (error) {
-      await this.saveAudioStatus(conversationId, 'AUDIO_FAILED');
+      await this.saveAudioStatus(
+        conversationId,
+        'AUDIO_FAILED',
+        trackId,
+        agentId,
+      );
       this.logger.error(
         `Error saving audio for conversation ${conversationId}:`,
         error.message,
@@ -161,6 +180,8 @@ export class ConversationsService {
   private async saveAudioStatus(
     conversationId: string,
     status: AudiosStatus['status'],
+    trackId?: string,
+    agentId?: string,
   ): Promise<void> {
     try {
       const timestamp = Math.floor(Date.now() / 1000);
@@ -171,6 +192,8 @@ export class ConversationsService {
         await this.audiosStatusRepository.update(conversationId, {
           status,
           update_at: timestamp,
+          ...(trackId && { track_id: trackId }),
+          ...(agentId && { agent_id: agentId }),
         });
       } else {
         const statusRecord: AudiosStatus = {
@@ -178,6 +201,8 @@ export class ConversationsService {
           status,
           time_stamp: timestamp,
           update_at: timestamp,
+          ...(trackId && { track_id: trackId }),
+          ...(agentId && { agent_id: agentId }),
         };
         await this.audiosStatusRepository.createOrReplace(
           conversationId,
