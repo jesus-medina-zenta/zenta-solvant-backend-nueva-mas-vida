@@ -131,8 +131,9 @@ export class ReportsService {
       const buffer = await workbook.xlsx.writeBuffer();
       this.validateBufferSize(buffer);
 
+      const totalColumns = 3 + keySets.dynamic.size + keySets.evaluation.size;
       this.logger.log(
-        `Excel generated: ${conversations.length} rows, ${keySets.evaluation.size} columns`,
+        `Excel generated: ${conversations.length} rows, ${totalColumns} columns (3 base, ${keySets.dynamic.size} dynamic, ${keySets.evaluation.size} evaluation)`,
       );
       return Buffer.from(buffer);
     } catch (error) {
@@ -244,8 +245,10 @@ export class ReportsService {
     value == null
       ? ''
       : typeof value === 'object'
-        ? JSON.stringify(value).substring(0, 10000) +
-          (JSON.stringify(value).length > 10000 ? '...' : '')
+        ? (() => {
+            const str = JSON.stringify(value);
+            return str.substring(0, 10000) + (str.length > 10000 ? '...' : '');
+          })()
         : String(value).substring(0, 32767);
 
   // Optimized helper methods
