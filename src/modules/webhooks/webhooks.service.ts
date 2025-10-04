@@ -279,17 +279,16 @@ export class WebhooksService {
     newStatus: string,
   ): Promise<void> {
     try {
-      this.logger.log(
-        'Updating track status using track_id as document identifier',
-        {
-          trackId,
-          newStatus,
-        },
-      );
+      this.logger.log('Updating track status by searching for track_id field', {
+        trackId,
+        newStatus,
+      });
 
-      // Usar track_id como identificador del documento directamente
-      const existingRecord =
-        await this.registrosSftpRepository.getById(trackId);
+      // Buscar por el campo track_id usando getByField
+      const existingRecord = await this.registrosSftpRepository.getByField(
+        'track_id',
+        trackId,
+      );
 
       if (!existingRecord) {
         this.logger.warn('No SFTP record found for track_id', {
@@ -304,11 +303,16 @@ export class WebhooksService {
         track_status: newStatus,
       };
 
-      await this.registrosSftpRepository.update(trackId, updatedRegistro);
+      // Usar el ID real del documento para la actualización
+      await this.registrosSftpRepository.update(
+        existingRecord.id,
+        updatedRegistro,
+      );
 
       this.logger.log('Track status updated successfully', {
         trackId,
         newStatus,
+        documentId: existingRecord.id,
       });
     } catch (error) {
       this.logger.error('Failed to update track status', {
