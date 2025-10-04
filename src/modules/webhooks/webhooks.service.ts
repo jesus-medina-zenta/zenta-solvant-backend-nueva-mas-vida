@@ -297,17 +297,13 @@ export class WebhooksService {
         return;
       }
 
-      // Actualizar el track_status del registro específico
-      const updatedRegistro = {
-        ...existingRecord,
+      // Solo actualizar el campo track_status, no todo el objeto
+      const updateData = {
         track_status: newStatus,
       };
 
       // Usar el ID real del documento para la actualización
-      await this.registrosSftpRepository.update(
-        existingRecord.id,
-        updatedRegistro,
-      );
+      await this.registrosSftpRepository.update(existingRecord.id, updateData);
 
       this.logger.log('Track status updated successfully', {
         trackId,
