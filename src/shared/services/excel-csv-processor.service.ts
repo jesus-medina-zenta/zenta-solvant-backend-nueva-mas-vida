@@ -80,7 +80,17 @@ export class ExcelCsvProcessor {
           headers = cleanedRow.map((cell) => cell?.toString() || '');
           data.push(headers);
         } else {
-          data.push(cleanedRow.map((cell) => cell || null));
+          data.push(
+            cleanedRow.map((cell) => {
+              if (cell instanceof Date) {
+                const day = String(cell.getDate()).padStart(2, '0');
+                const month = String(cell.getMonth() + 1).padStart(2, '0');
+                const year = cell.getFullYear();
+                return `${day}-${month}-${year}`;
+              }
+              return cell || null;
+            }),
+          );
         }
       });
 
