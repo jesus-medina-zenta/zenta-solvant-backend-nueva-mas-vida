@@ -162,7 +162,7 @@ export class WebhooksService {
     // Do not save audio if final_call_outcome is "NC"
     const finalCallOutcome =
       processedData.analysis?.data_collection_results?.final_call_outcome
-        ?.json_schema?.value;
+        ?.json_schema?.value ?? null;
 
     if (finalCallOutcome === 'NC') {
       this.logger.log('Audio processing skipped - final call outcome is NC', {
