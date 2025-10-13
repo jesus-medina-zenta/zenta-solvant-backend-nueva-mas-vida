@@ -161,18 +161,18 @@ export class WebhooksService {
 
     // Do not save audio if final_call_outcome is "NC"
     const finalCallOutcome =
-      processedData.analysis?.data_collection_results?.final_call_outcome
-        ?.json_schema?.value ?? null;
+      data.analysis?.data_collection_results?.final_call_outcome?.value ?? null;
 
     if (finalCallOutcome === 'NC') {
-      this.logger.log('Audio processing skipped - final call outcome is NC', {
-        conversationId: data.conversation_id,
-        finalCallOutcome,
-      });
+      this.logger.log(
+        `Audio processing skipped - final call outcome is NC | ConversationId: ${processedData.conversation_id} | FinalCallOutcome: ${finalCallOutcome} | TrackId: ${trackId} | AgentId: ${processedData.agent_id}`,
+      );
     } else {
       this.logger.log('Processing audio for conversation', {
-        conversationId: data.conversation_id,
+        conversationId: processedData.conversation_id,
         finalCallOutcome,
+        trackId,
+        agentId: processedData.agent_id,
       });
       await this.processAudioAsync(
         data.conversation_id,
