@@ -159,7 +159,7 @@ export class WebhooksService {
 
     await this.saveConversationData(processedData);
 
-    // No guardar el audio si el final_call_outcome es "NC"
+    // Do not save audio if final_call_outcome is "NC"
     const finalCallOutcome =
       processedData.analysis?.data_collection_results?.final_call_outcome
         ?.json_schema?.value;
