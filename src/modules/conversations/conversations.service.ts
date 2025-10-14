@@ -85,8 +85,10 @@ export class ConversationsService {
       has_audio: response.has_audio,
       has_user_audio: response.has_user_audio,
       has_response_audio: response.has_response_audio,
-      dinamic_variable:
-        response.conversation_initiation_client_data.dynamic_variables,
+      dinamic_variable: {
+        ...response.conversation_initiation_client_data.dynamic_variables,
+        system__called_number: response.user_id,
+      },
       analysis: response.analysis,
     };
 
