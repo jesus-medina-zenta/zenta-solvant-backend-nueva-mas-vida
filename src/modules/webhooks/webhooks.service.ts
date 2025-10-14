@@ -165,7 +165,13 @@ export class WebhooksService {
 
     if (finalCallOutcome === 'NC') {
       this.logger.log(
-        `Audio processing skipped - final call outcome is NC | ConversationId: ${processedData.conversation_id} | FinalCallOutcome: ${finalCallOutcome} | TrackId: ${trackId} | AgentId: ${processedData.agent_id}`,
+        'Audio processing skipped - final call outcome is NC',
+        {
+          conversationId: processedData.conversation_id,
+          finalCallOutcome,
+          trackId,
+          agentId: processedData.agent_id,
+        }
       );
     } else {
       this.logger.log('Processing audio for conversation', {
