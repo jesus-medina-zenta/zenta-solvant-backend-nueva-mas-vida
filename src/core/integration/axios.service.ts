@@ -77,7 +77,9 @@ export class AxiosService<T> implements IIntegrationService<T> {
 
   async post(endpoint: string, data: any): Promise<T> {
     try {
+      const resolvedUrl = this.axiosInstance.getUri({ url: endpoint });
       this.logger.log(`[POST] ${endpoint} - Starting request`);
+      this.logger.log(`[POST] Resolved URL: ${resolvedUrl}`);
       const response = await this.axiosInstance.post(endpoint, data);
       this.logger.log(
         `[POST] ${endpoint} - Response received (${response.status})`,
@@ -119,15 +121,25 @@ export class AxiosService<T> implements IIntegrationService<T> {
 
     if (error.response) {
       const { status, data } = error.response;
+      const remoteMessage =
+        data?.detail?.message ||
+        data?.detail ||
+        data?.message ||
+        'No detail provided by upstream API';
+      this.logger.error(
+        `HTTP ${status} upstream response for ${endpoint}: ${remoteMessage}`,
+      );
       switch (status) {
         case 400:
-          throw new BadRequestException(data?.message);
+          throw new BadRequestException(remoteMessage);
         case 401:
           throw new UnauthorizedAccessException();
         case 404:
-          throw new ResourceNotFoundException(endpoint);
+          throw new ResourceNotFoundException(
+            `${endpoint}. Upstream detail: ${remoteMessage}`,
+          );
         case 500:
-          throw new InternalServerErrorException(data?.message);
+          throw new InternalServerErrorException(remoteMessage);
         default:
           throw new IntegrationException(
             `Error HTTP desconocido (${status}).`,

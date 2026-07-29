@@ -41,8 +41,8 @@ COPY --from=builder /usr/src/app/dist ./dist
 # Reducir tamaño: borrar caché de npm
 RUN npm cache clean --force
 
-# Exponer puerto (NestJS por defecto en 3000)
-EXPOSE 3000
+# Exponer puerto de Cloud Run
+EXPOSE 8080
 
 # Cambiar al usuario no root
 USER appuser

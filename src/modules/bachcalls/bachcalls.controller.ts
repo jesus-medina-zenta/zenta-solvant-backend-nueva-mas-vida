@@ -83,17 +83,17 @@ export class BachcallsController {
   }
 
   @Post('upload-excel')
-  @ApiOperation({ summary: 'Upload Excel file for batch calling' })
+  @ApiOperation({ summary: 'Upload Excel/CSV file for batch calling' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
-    description: 'Excel file and batch call information',
+    description: 'Excel/CSV file and batch call information',
     schema: {
       type: 'object',
       properties: {
         file: {
           type: 'string',
           format: 'binary',
-          description: 'Excel file to upload',
+          description: 'Excel or CSV file to upload',
         },
         agent_id: {
           type: 'string',
@@ -113,7 +113,7 @@ export class BachcallsController {
   })
   @ApiResponse({
     status: 201,
-    description: 'Excel file uploaded and processed successfully.',
+    description: 'Excel/CSV file uploaded and processed successfully.',
     type: UploadExcelResponseDto,
   })
   @ApiResponse({
@@ -124,6 +124,57 @@ export class BachcallsController {
   @ApiResponse({ status: 403, description: 'Forbidden.' })
   @UseInterceptors(FileInterceptor('file'))
   async uploadExcel(
+    @UploadedFile() file: any,
+    @Body() uploadExcelDto: UploadExcelDto,
+  ): Promise<UploadExcelResponseDto> {
+    return await this.bachcallsService.uploadExcel(file, uploadExcelDto);
+  }
+
+  @Post('upload-csv')
+  @ApiOperation({
+    summary: 'Upload CSV file for batch calling and trigger processing',
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    description: 'CSV file and batch call information',
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+          description: 'CSV file to upload',
+        },
+        agent_id: {
+          type: 'string',
+          description: 'ID of the agent',
+        },
+        phone_id: {
+          type: 'string',
+          description: 'ID of the phone',
+        },
+        batch_name: {
+          type: 'string',
+          description: 'Name of the batch calling',
+        },
+      },
+      required: ['file', 'agent_id', 'phone_id', 'batch_name'],
+    },
+  })
+  @ApiResponse({
+    status: 201,
+    description:
+      'CSV uploaded, metadata saved in Firestore, and transformation pipeline triggered.',
+    type: UploadExcelResponseDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request - CSV validation failed.',
+    type: ValidationErrorDto,
+  })
+  @ApiResponse({ status: 403, description: 'Forbidden.' })
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadCsv(
     @UploadedFile() file: any,
     @Body() uploadExcelDto: UploadExcelDto,
   ): Promise<UploadExcelResponseDto> {

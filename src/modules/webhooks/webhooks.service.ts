@@ -1,6 +1,7 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
+import axios from 'axios';
 import { WebhookResponseDto } from './dto/webhook-response.dto';
 import {
   ConvaiWebhookData,
@@ -87,12 +88,131 @@ export class WebhooksService {
         'Post call transcription processed successfully',
       );
     } catch (error) {
+      const errorMessage = this.getErrorMessage(error);
       this.logger.error('ElevenLabs webhook processing failed', {
         conversationId: webhookData.data?.conversation_id,
-        error: error.message,
+        error: errorMessage,
       });
 
-      if (error.message === 'Invalid webhook signature') {
+      if (errorMessage === 'Invalid webhook signature') {
+        throw new Error('UNAUTHORIZED');
+      }
+
+      throw error;
+    }
+  }
+
+  async processPaymentLinkWebhook(
+    webhookPayload: any,
+    signature?: string,
+    userAgent?: string,
+    rawBody?: string,
+  ): Promise<WebhookResponseDto> {
+    const webhookData = webhookPayload.body || webhookPayload;
+    const conversationId = this.extractConversationId(webhookData);
+
+    try {
+      this.logger.log('Processing payment link webhook', {
+        conversationId,
+        hasSignature: !!signature,
+        payloadKeys: this.getObjectKeys(webhookData),
+        dataKeys: this.getObjectKeys(webhookData?.data),
+      });
+
+      if (userAgent && !userAgent.includes('ElevenLabs')) {
+        this.logger.warn('Webhook from non-ElevenLabs source detected', {
+          userAgent,
+          conversationId,
+        });
+      }
+
+      const webhookSecret = this.configService.get<string>(
+        'elevenLabsWebhookSecret',
+      );
+      if (signature && webhookSecret && rawBody) {
+        const isValidSignature = await this.validateElevenLabsSignature(
+          rawBody,
+          signature,
+          webhookSecret,
+        );
+
+        if (!isValidSignature) {
+          this.logger.warn('Invalid payment-link webhook signature', {
+            conversationId,
+          });
+          throw new Error('Invalid webhook signature');
+        }
+      }
+
+      const dynamicVariables = this.extractDynamicVariables(webhookData);
+      const nestedBodyVariables = this.cleanUndefinedValues(webhookData?.body);
+
+      const recipientEmail =
+        dynamicVariables.email_destinatario ||
+        dynamicVariables.email ||
+        nestedBodyVariables?.email_destinatario ||
+        nestedBodyVariables?.email ||
+        dynamicVariables.correo ||
+        nestedBodyVariables?.correo ||
+        null;
+      const paymentLink =
+        dynamicVariables.url_link ||
+        dynamicVariables.link_pago ||
+        dynamicVariables.link ||
+        nestedBodyVariables?.url_link ||
+        nestedBodyVariables?.link_pago ||
+        nestedBodyVariables?.link ||
+        dynamicVariables.payment_link ||
+        dynamicVariables.paymentLink ||
+        nestedBodyVariables?.payment_link ||
+        nestedBodyVariables?.paymentLink ||
+        null;
+      const recipientName =
+        dynamicVariables.nombre_deudor ||
+        dynamicVariables.name ||
+        dynamicVariables.nombre ||
+        nestedBodyVariables?.nombre_deudor ||
+        nestedBodyVariables?.name ||
+        nestedBodyVariables?.nombre ||
+        'cliente';
+
+      this.logger.log('Resolved payment-link webhook variables', {
+        conversationId,
+        hasDynamicVariables: Object.keys(dynamicVariables).length > 0,
+        dynamicVariableKeys: Object.keys(dynamicVariables),
+        hasRecipientEmail: !!recipientEmail,
+        hasPaymentLink: !!paymentLink,
+      });
+
+      if (!recipientEmail || !paymentLink) {
+        throw new Error(
+          'Missing required dynamic variables: email_destinatario/email and url_link/link_pago/link',
+        );
+      }
+
+      await this.sendPaymentLinkEmail(
+        recipientEmail,
+        recipientName,
+        paymentLink,
+      );
+
+      this.logger.log('Payment link email sent successfully', {
+        conversationId,
+        recipientEmail,
+      });
+
+      return new WebhookResponseDto(
+        true,
+        'Payment link email sent successfully',
+      );
+    } catch (error) {
+      const errorMessage = this.getErrorMessage(error);
+      this.logger.error('Payment-link webhook processing failed', {
+        conversationId,
+        error: errorMessage,
+      });
+
+      if (errorMessage === 'Invalid webhook signature') {
         throw new Error('UNAUTHORIZED');
       }
 
@@ -209,9 +329,10 @@ export class WebhooksService {
         conversationId: data.conversation_id,
       });
     } catch (error) {
+      const errorMessage = this.getErrorMessage(error);
       this.logger.error('Failed to save conversation data', {
         conversationId: data.conversation_id,
-        error: error.message,
+        error: errorMessage,
       });
       throw error;
     }
@@ -232,9 +353,10 @@ export class WebhooksService {
         conversationId,
       });
     } catch (error) {
+      const errorMessage = this.getErrorMessage(error);
       this.logger.warn('Audio processing failed', {
         conversationId,
-        error: error.message,
+        error: errorMessage,
       });
     }
   }
@@ -272,7 +394,9 @@ export class WebhooksService {
         Buffer.from(receivedHash, 'hex'),
       );
     } catch (error) {
-      this.logger.error('Signature validation error', { error: error.message });
+      this.logger.error('Signature validation error', {
+        error: this.getErrorMessage(error),
+      });
       return false;
     }
   }
@@ -298,6 +422,91 @@ export class WebhooksService {
     }
 
     return cleaned;
+  }
+
+  private extractConversationId(webhookData: any): string | undefined {
+    return (
+      webhookData?.data?.conversation_id ||
+      webhookData?.conversation_id ||
+      webhookData?.event?.conversation_id ||
+      undefined
+    );
+  }
+
+  private extractDynamicVariables(webhookData: any): Record<string, any> {
+    const candidates = [
+      webhookData?.data?.conversation_initiation_client_data?.dynamic_variables,
+      webhookData?.conversation_initiation_client_data?.dynamic_variables,
+      webhookData?.data?.dynamic_variables,
+      webhookData?.dynamic_variables,
+      webhookData?.body?.dynamic_variables,
+      webhookData?.body,
+      webhookData?.payload?.dynamic_variables,
+      webhookData?.event?.dynamic_variables,
+      webhookData,
+    ];
+
+    for (const candidate of candidates) {
+      const cleaned = this.cleanUndefinedValues(candidate);
+      if (cleaned && typeof cleaned === 'object' && !Array.isArray(cleaned)) {
+        if (Object.keys(cleaned).length > 0) {
+          return cleaned as Record<string, any>;
+        }
+      }
+    }
+
+    return {};
+  }
+
+  private getObjectKeys(value: unknown): string[] {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return [];
+    }
+
+    return Object.keys(value as Record<string, unknown>);
+  }
+
+  private async sendPaymentLinkEmail(
+    to: string,
+    recipientName: string,
+    paymentLink: string,
+  ): Promise<void> {
+    const sendgridApiKey = this.configService.get<string>('sendgridApiKey');
+    const fromEmail = this.configService.get<string>('sendgridFromEmail');
+
+    if (!sendgridApiKey || !fromEmail) {
+      throw new Error(
+        'SendGrid is not configured. Missing SENDGRID_API_KEY or SENDGRID_FROM_EMAIL',
+      );
+    }
+
+    const emailPayload = {
+      personalizations: [
+        {
+          to: [{ email: to }],
+          subject: 'Regulariza tu pago - Isapre Nueva Masvida',
+        },
+      ],
+      from: { email: fromEmail, name: 'Isapre Nueva Masvida' },
+      content: [
+        {
+          type: 'text/plain',
+          value: `Hola ${recipientName},\n\nTe compartimos tu link de pago para regularizar tu cotización:\n${paymentLink}\n\nSaludos,\nIsapre Nueva Masvida`,
+        },
+        {
+          type: 'text/html',
+          value: `<p>Hola ${recipientName},</p><p>Te compartimos tu link de pago para regularizar tu cotización:</p><p><a href="${paymentLink}">${paymentLink}</a></p><p>Saludos,<br/>Isapre Nueva Masvida</p>`,
+        },
+      ],
+    };
+
+    await axios.post('https://api.sendgrid.com/v3/mail/send', emailPayload, {
+      headers: {
+        Authorization: `Bearer ${sendgridApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      timeout: 10000,
+    });
   }
 
   private async updateTrackStatus(
@@ -337,11 +546,16 @@ export class WebhooksService {
         documentId: existingRecord.id,
       });
     } catch (error) {
+      const errorMessage = this.getErrorMessage(error);
       this.logger.error('Failed to update track status', {
         trackId,
         newStatus,
-        error: error.message,
+        error: errorMessage,
       });
     }
+  }
+
+  private getErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : String(error);
   }
 }

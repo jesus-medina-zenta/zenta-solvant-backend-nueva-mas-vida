@@ -1,5 +1,6 @@
 export const configuration = () => ({
-  port: parseInt(process.env.APP_PORT, 10) || 3000,
+  // Cloud Run injects PORT; keep APP_PORT for local/dev overrides.
+  port: parseInt(process.env.PORT || process.env.APP_PORT, 10) || 8080,
   listCors: process.env.LIST_CORS,
   secretKeyAuth: process.env.SECRETKEY_AUTH,
   tokenExpiration: process.env.TOKEN_EXPIRATION || '1h',
@@ -18,6 +19,8 @@ export const configuration = () => ({
   externalApiSecurityType: process.env.EXTERNAL_API_SECURITY_TYPE,
   externalApiKey: process.env.EXTERNAL_API_KEY,
   externalApiToken: process.env.EXTERNAL_API_TOKEN,
+  sendgridApiKey: process.env.SENDGRID_API_KEY,
+  sendgridFromEmail: process.env.SENDGRID_FROM_EMAIL,
   // ElevenLabs Webhooks
   elevenLabsWebhookSecret: process.env.ELEVENLABS_WEBHOOK_SECRET,
 });
