@@ -6,6 +6,7 @@ import { CsrfToken } from 'src/shared/entities/csrf-token.entity';
 import { AudiosStatus } from 'src/shared/entities/audios-status.entity';
 import { RegistroArchivo } from 'src/shared/entities/registro-archivo.entity';
 import { RegistroSftp } from 'src/shared/entities/registro-sftp.entity';
+import { BatchCallExport } from 'src/shared/entities/batch-call-export.entity';
 
 @Module({
   imports: [ConfigModule],
@@ -73,6 +74,15 @@ import { RegistroSftp } from 'src/shared/entities/registro-sftp.entity';
       },
       inject: [ConfigService],
     },
+    {
+      provide: 'BATCH_CALL_EXPORTS_REPOSITORY',
+      useFactory: (configService: ConfigService) => {
+        return new FirestoreRepository<BatchCallExport>(configService, {
+          collectionName: 'batch_call_exports',
+        });
+      },
+      inject: [ConfigService],
+    },
   ],
   exports: [
     'USER_REPOSITORY',
@@ -82,6 +92,7 @@ import { RegistroSftp } from 'src/shared/entities/registro-sftp.entity';
     'AUDIOS_STATUS_REPOSITORY',
     'REGISTRO_ARCHIVOS_REPOSITORY',
     'REGISTROS_SFTP_REPOSITORY',
+    'BATCH_CALL_EXPORTS_REPOSITORY',
   ],
 })
 export class DatabaseModule {}

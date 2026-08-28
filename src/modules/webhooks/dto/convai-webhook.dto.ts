@@ -92,6 +92,10 @@ export interface ProcessedConversationData {
   // Todo el análisis
   analysis: Record<string, any>;
 
+  // Variables extraídas de analysis.data_collection_results
+  fecha_compromiso: string | null;
+  agendar_llamada: string | boolean | null;
+
   // Metadatos de procesamiento
   processed_at: string;
   event_timestamp: number;

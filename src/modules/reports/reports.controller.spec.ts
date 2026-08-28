@@ -5,10 +5,14 @@ import { ReportsService } from './reports.service';
 describe('ReportsController', () => {
   let controller: ReportsController;
 
+  const mockReportsService = {
+    getConversationsByBatchCallId: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [ReportsController],
-      providers: [ReportsService],
+      providers: [{ provide: ReportsService, useValue: mockReportsService }],
     }).compile();
 
     controller = module.get<ReportsController>(ReportsController);

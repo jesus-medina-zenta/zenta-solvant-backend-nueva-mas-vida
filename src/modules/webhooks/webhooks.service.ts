@@ -10,6 +10,11 @@ import {
 import { IDatabaseService } from 'src/shared/interfaces/i-database-service.interface';
 import { ConversationsService } from '../conversations/conversations.service';
 import { RegistroSftp } from 'src/shared/entities/registro-sftp.entity';
+import { IIntegrationService } from 'src/shared/interfaces/i-integration-service.interface';
+import { GcpPipelineService } from 'src/shared/services/gcp-pipeline.service';
+import { BatchCallExport } from 'src/shared/entities/batch-call-export.entity';
+import { DocumentConflictException } from 'src/shared/exceptions/database-exceptions';
+import { renderPaymentLinkEmailHtml } from './templates/payment-link-email.template';
 
 @Injectable()
 export class WebhooksService {
@@ -20,6 +25,11 @@ export class WebhooksService {
     private readonly registrosLlamadasRepository: IDatabaseService<ProcessedConversationData>,
     @Inject('REGISTROS_SFTP_REPOSITORY')
     private readonly registrosSftpRepository: IDatabaseService<RegistroSftp>,
+    @Inject('EXTERNAL_API_SERVICE')
+    private readonly externalApiService: IIntegrationService<any>,
+    @Inject('BATCH_CALL_EXPORTS_REPOSITORY')
+    private readonly batchExportsRepository: IDatabaseService<BatchCallExport>,
+    private readonly gcpPipelineService: GcpPipelineService,
     private readonly conversationsService: ConversationsService,
     private readonly configService: ConfigService,
   ) {}
@@ -175,6 +185,14 @@ export class WebhooksService {
         nestedBodyVariables?.name ||
         nestedBodyVariables?.nombre ||
         'cliente';
+      const debtAmountRaw =
+        dynamicVariables.deuda_cotizaciones ||
+        nestedBodyVariables?.deuda_cotizaciones ||
+        null;
+      const debtAmount =
+        typeof debtAmountRaw === 'string'
+          ? debtAmountRaw.trim()
+          : debtAmountRaw;
 
       this.logger.log('Resolved payment-link webhook variables', {
         conversationId,
@@ -182,6 +200,7 @@ export class WebhooksService {
         dynamicVariableKeys: Object.keys(dynamicVariables),
         hasRecipientEmail: !!recipientEmail,
         hasPaymentLink: !!paymentLink,
+        hasDebtAmount: !!debtAmount,
       });
 
       if (!recipientEmail || !paymentLink) {
@@ -190,10 +209,21 @@ export class WebhooksService {
         );
       }
 
+      if (
+        debtAmount === null ||
+        debtAmount === undefined ||
+        debtAmount === ''
+      ) {
+        throw new Error(
+          'Missing required dynamic variable: deuda_cotizaciones',
+        );
+      }
+
       await this.sendPaymentLinkEmail(
         recipientEmail,
         recipientName,
         paymentLink,
+        String(debtAmount),
       );
 
       this.logger.log('Payment link email sent successfully', {
@@ -273,6 +303,13 @@ export class WebhooksService {
 
       analysis: this.cleanUndefinedValues(data.analysis) ?? {},
 
+      fecha_compromiso:
+        data.analysis?.data_collection_results?.fecha_compromiso?.value ??
+        null,
+      agendar_llamada:
+        data.analysis?.data_collection_results?.agendar_llamada?.value ??
+        null,
+
       processed_at: new Date().toISOString(),
       event_timestamp: webhookData.event_timestamp,
     };
@@ -309,6 +346,80 @@ export class WebhooksService {
 
     if (trackId) {
       await this.updateTrackStatus(trackId, 'registered_call');
+    }
+
+    const batchCallId = processedData.batch_call?.batch_call_id ?? null;
+    if (batchCallId) {
+      await this.checkAndTriggerBatchCompletion(batchCallId);
+    }
+  }
+
+  private async checkAndTriggerBatchCompletion(
+    batchCallId: string,
+  ): Promise<void> {
+    try {
+      const bachcall = await this.externalApiService.get(
+        `/convai/batch-calling/${batchCallId}`,
+      );
+      const totalCallsScheduled = bachcall?.total_calls_scheduled ?? 0;
+
+      const registeredConversations =
+        await this.registrosLlamadasRepository.getAllByField(
+          'batch_call.batch_call_id',
+          batchCallId,
+        );
+      const totalCallsRegistered = registeredConversations.length;
+
+      this.logger.log('Checking batch call completion', {
+        batchCallId,
+        totalCallsScheduled,
+        totalCallsRegistered,
+      });
+
+      if (
+        totalCallsScheduled > 0 &&
+        totalCallsRegistered >= totalCallsScheduled
+      ) {
+        try {
+          await this.batchExportsRepository.create(batchCallId, {
+            batch_call_id: batchCallId,
+            total_calls_scheduled: totalCallsScheduled,
+            total_calls_registered: totalCallsRegistered,
+            triggered_at: new Date().toISOString(),
+          });
+        } catch (error) {
+          if (error instanceof DocumentConflictException) {
+            this.logger.log(
+              'Batch call completion already triggered by another invocation',
+              { batchCallId },
+            );
+            return;
+          }
+          this.logger.error('Failed to claim batch call export', {
+            batchCallId,
+            error: this.getErrorMessage(error),
+          });
+          return;
+        }
+
+        const gcpPipelineNameWriting = this.configService.get<string>(
+          'gcpPipelineNameWriting',
+        );
+        await this.gcpPipelineService.triggerPipelineAfterAction(
+          'batch_call_completed',
+          batchCallId,
+          gcpPipelineNameWriting,
+        );
+
+        this.logger.log('Triggered pipe-writing CSV export for batch call', {
+          batchCallId,
+        });
+      }
+    } catch (error) {
+      this.logger.error('Failed to check batch call completion', {
+        batchCallId,
+        error: this.getErrorMessage(error),
+      });
     }
   }
 
@@ -470,6 +581,7 @@ export class WebhooksService {
     to: string,
     recipientName: string,
     paymentLink: string,
+    debtAmount: string,
   ): Promise<void> {
     const sendgridApiKey = this.configService.get<string>('sendgridApiKey');
     const fromEmail = this.configService.get<string>('sendgridFromEmail');
@@ -477,6 +589,20 @@ export class WebhooksService {
     if (!sendgridApiKey || !fromEmail) {
       throw new Error(
         'SendGrid is not configured. Missing SENDGRID_API_KEY or SENDGRID_FROM_EMAIL',
+      );
+    }
+
+    let paymentUrl: URL;
+    try {
+      paymentUrl = new URL(paymentLink);
+    } catch {
+      throw new Error(
+        'Invalid payment link: must be a well-formed https:// URL',
+      );
+    }
+    if (paymentUrl.protocol !== 'https:') {
+      throw new Error(
+        'Invalid payment link: must be a well-formed https:// URL',
       );
     }
 
@@ -491,11 +617,15 @@ export class WebhooksService {
       content: [
         {
           type: 'text/plain',
-          value: `Hola ${recipientName},\n\nTe compartimos tu link de pago para regularizar tu cotización:\n${paymentLink}\n\nSaludos,\nIsapre Nueva Masvida`,
+          value: `Hola ${recipientName},\n\nActualmente registras un saldo pendiente de $${debtAmount}.\n\nTe compartimos tu link de pago para regularizar tu cotización:\n${paymentLink}\n\nSaludos,\nIsapre Nueva Masvida`,
         },
         {
           type: 'text/html',
-          value: `<p>Hola ${recipientName},</p><p>Te compartimos tu link de pago para regularizar tu cotización:</p><p><a href="${paymentLink}">${paymentLink}</a></p><p>Saludos,<br/>Isapre Nueva Masvida</p>`,
+          value: renderPaymentLinkEmailHtml(
+            recipientName,
+            paymentUrl.href,
+            debtAmount,
+          ),
         },
       ],
     };

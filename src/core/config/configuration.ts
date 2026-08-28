@@ -10,6 +10,8 @@ export const configuration = () => ({
   gcpRegion: process.env.GCP_REGION || 'us-central1',
   gcpPipelineName:
     process.env.GCP_PIPELINE_NAME || 'zenta-solvant-pipe-reading-csv-dev',
+  gcpPipelineNameWriting:
+    process.env.GCP_PIPELINE_NAME_WRITING || 'zenta-solvant-pipe-writing-dev',
   gcpFirestoreDatabaseId: process.env.GCP_FIRESTORE_DATABASE_ID,
   gcpServiceAccountEmail: process.env.GCP_SERVICE_ACCOUNT_EMAIL,
   gcpAudioBucketName: process.env.GCP_AUDIO_BUCKET_NAME,
