@@ -25,6 +25,21 @@ import { v4 as uuidv4 } from 'uuid';
 export class BachcallsService {
   private readonly logger = new Logger(BachcallsService.name);
 
+  private static readonly MESES_ES = [
+    'enero',
+    'febrero',
+    'marzo',
+    'abril',
+    'mayo',
+    'junio',
+    'julio',
+    'agosto',
+    'septiembre',
+    'octubre',
+    'noviembre',
+    'diciembre',
+  ];
+
   constructor(
     @Inject('EXTERNAL_API_SERVICE')
     private readonly externalApiService: IIntegrationService<any>,
@@ -37,6 +52,51 @@ export class BachcallsService {
     private readonly pipelineService: GcpPipelineService,
     private readonly excelCsvProcessor: ExcelCsvProcessor,
   ) {}
+
+  /**
+   * Parsea una fecha en formato DD/MM/YY o DD/MM/YYYY (con u sin hora al final).
+   * Devuelve null si el valor esta vacio o no calza con el formato esperado.
+   */
+  private parsePeriodoFecha(
+    value?: string,
+  ): { mes: number; anio: number } | null {
+    if (!value) return null;
+
+    const datePart = value.trim().split(' ')[0];
+    const parts = datePart.split('/');
+    if (parts.length !== 3) return null;
+
+    const day = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10);
+    let year = parseInt(parts[2], 10);
+
+    if (isNaN(day) || isNaN(month) || isNaN(year)) return null;
+    if (month < 1 || month > 12) return null;
+    if (year < 100) year += 2000;
+
+    return { mes: month, anio: year };
+  }
+
+  /**
+   * Arma el string hablado de periodo_deuda a partir de menor_per_deuda /
+   * mayor_per_deuda (formato DD/MM/YY), tal como lo espera el prompt del
+   * agente de ElevenLabs (ej. "enero de 2019" o un rango "enero de 2019 a
+   * enero de 2023"). Nunca se le pasa una fecha cruda al agente.
+   */
+  private buildPeriodoDeuda(metadata: Record<string, any> = {}): string {
+    const menor = this.parsePeriodoFecha(metadata['menor_per_deuda']);
+    const mayor = this.parsePeriodoFecha(metadata['mayor_per_deuda']);
+
+    const format = (p: { mes: number; anio: number }) =>
+      `${BachcallsService.MESES_ES[p.mes - 1]} de ${p.anio}`;
+
+    if (menor && mayor && (menor.mes !== mayor.mes || menor.anio !== mayor.anio)) {
+      return `${format(menor)} a ${format(mayor)}`;
+    }
+    if (menor) return format(menor);
+    if (mayor) return format(mayor);
+    return '';
+  }
 
   async listBachcalls(
     limit: number,
@@ -306,6 +366,10 @@ export class BachcallsService {
               type: 'conversation_initiation_client_data',
               dynamic_variables: {
                 ...metadata, // Cargar toda la metadata tal cual sin procesamiento
+                // Alias que espera el prompt del agente de ElevenLabs, que no
+                // coinciden 1:1 con los nombres de campo de metadata_user.
+                correo: metadata?.email_destinatario || metadata?.email || '',
+                periodo_deuda: this.buildPeriodoDeuda(metadata),
                 track_id: registro.track_id ?? null, // Agregar track_id como variable dinámica, null si no existe
               },
             },
