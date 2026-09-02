@@ -12,6 +12,9 @@ export const configuration = () => ({
     process.env.GCP_PIPELINE_NAME || 'zenta-solvant-pipe-reading-csv-dev',
   gcpPipelineNameWriting:
     process.env.GCP_PIPELINE_NAME_WRITING || 'zenta-solvant-pipe-writing-dev',
+  gcpPipelineNameWritingAudios:
+    process.env.GCP_PIPELINE_NAME_WRITING_AUDIOS ||
+    'zenta-solvant-pipe-writing-audios-dev',
   gcpFirestoreDatabaseId: process.env.GCP_FIRESTORE_DATABASE_ID,
   gcpServiceAccountEmail: process.env.GCP_SERVICE_ACCOUNT_EMAIL,
   gcpAudioBucketName: process.env.GCP_AUDIO_BUCKET_NAME,

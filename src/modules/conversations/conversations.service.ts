@@ -1,4 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { IIntegrationService } from 'src/shared/interfaces/i-integration-service.interface';
 import { IAudioStorageService } from 'src/shared/interfaces/i-audio-storage-service.interface';
 import { IDatabaseService } from 'src/shared/interfaces/i-database-service.interface';
@@ -7,6 +8,7 @@ import { GetConversationsQueryDto } from './dto/get-conversations-query.dto';
 import { ListConversationsResponseDto } from './dto/list-conversations-response.dto';
 import { ListConversationsDto } from './dto/list-conversation.dto';
 import { ConversationByIdResponseDto } from './dto/conversation-by-id-response.dto';
+import { GcpPipelineService } from 'src/shared/services/gcp-pipeline.service';
 
 @Injectable()
 export class ConversationsService {
@@ -19,6 +21,8 @@ export class ConversationsService {
     private readonly audioStorageService: IAudioStorageService,
     @Inject('AUDIOS_STATUS_REPOSITORY')
     private readonly audiosStatusRepository: IDatabaseService<AudiosStatus>,
+    private readonly gcpPipelineService: GcpPipelineService,
+    private readonly configService: ConfigService,
   ) {}
 
   async getConversations(
@@ -160,6 +164,8 @@ export class ConversationsService {
         agentId,
       );
 
+      await this.triggerAudioWritingPipeline(conversationId);
+
       return gcsPath;
     } catch (error) {
       await this.saveAudioStatus(
@@ -176,6 +182,29 @@ export class ConversationsService {
       throw new Error(
         `Failed to save audio for conversation ${conversationId}: ${error.message}`,
       );
+    }
+  }
+
+  private async triggerAudioWritingPipeline(
+    conversationId: string,
+  ): Promise<void> {
+    try {
+      const gcpPipelineNameWritingAudios = this.configService.get<string>(
+        'gcpPipelineNameWritingAudios',
+      );
+      await this.gcpPipelineService.triggerPipelineAfterAction(
+        'audio_saved_in_bucket',
+        conversationId,
+        gcpPipelineNameWritingAudios,
+      );
+      this.logger.log('Triggered pipe-writing-audios export', {
+        conversationId,
+      });
+    } catch (error) {
+      this.logger.error('Failed to trigger pipe-writing-audios export', {
+        conversationId,
+        error: error?.message ?? String(error),
+      });
     }
   }
 

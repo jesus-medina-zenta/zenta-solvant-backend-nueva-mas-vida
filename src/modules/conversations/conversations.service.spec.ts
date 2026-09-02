@@ -1,5 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { ConversationsService } from './conversations.service';
+import { GcpPipelineService } from 'src/shared/services/gcp-pipeline.service';
 
 describe('ConversationsService', () => {
   let service: ConversationsService;
@@ -17,6 +19,12 @@ describe('ConversationsService', () => {
     create: jest.fn(),
     update: jest.fn(),
   };
+  const mockGcpPipelineService = {
+    triggerPipelineAfterAction: jest.fn(),
+  };
+  const mockConfigService = {
+    get: jest.fn(),
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -31,6 +39,8 @@ describe('ConversationsService', () => {
           provide: 'AUDIOS_STATUS_REPOSITORY',
           useValue: mockAudiosStatusRepository,
         },
+        { provide: GcpPipelineService, useValue: mockGcpPipelineService },
+        { provide: ConfigService, useValue: mockConfigService },
       ],
     }).compile();
 

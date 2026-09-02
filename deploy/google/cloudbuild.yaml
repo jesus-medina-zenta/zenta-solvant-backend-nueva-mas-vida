@@ -43,6 +43,8 @@ steps:
       - '--set-env-vars=GCP_AUDIO_BUCKET_NAME=${_GCP_AUDIO_BUCKET_NAME}'
       - '--set-env-vars=GCP_CSV_BUCKET_NAME=${_GCP_CSV_BUCKET_NAME}'
       - '--set-env-vars=GCP_PIPELINE_NAME=${_GCP_PIPELINE_NAME}'
+      - '--set-env-vars=GCP_PIPELINE_NAME_WRITING=${_GCP_PIPELINE_NAME_WRITING}'
+      - '--set-env-vars=GCP_PIPELINE_NAME_WRITING_AUDIOS=${_GCP_PIPELINE_NAME_WRITING_AUDIOS}'
       - '--set-env-vars=ELEVENLABS_WEBHOOK_SECRET=${_ELEVENLABS_WEBHOOK_SECRET}'
       - '--set-env-vars=GCP_REGION=${_REGION}'
       - '--set-env-vars=GCP_PROJECT_ID=$PROJECT_ID'
